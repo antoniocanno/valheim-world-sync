@@ -5,6 +5,10 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using ValheimWorldSync;
+using ValheimWorldSync.Desktop;
+using ValheimWorldSync.Core.Models;
+using ValheimWorldSync.Platform.Windows.Configuration;
+using ValheimWorldSync.Platform.Windows.Credentials;
 using ValheimWorldSync.Desktop.ViewModels;
 
 internal static class Program
@@ -28,22 +32,42 @@ internal static class Program
         initialization.GetAwaiter().GetResult();
         if (model.IsWorking || model.PlayCommand.CanExecute(null)) throw new Exception("Unconfigured app must not enable playing.");
         var window = new MainWindow { DataContext = model };
-        Render(window, Path.Combine(output, "initial.png"), 600, 620);
+        Render(window, Path.Combine(output, "initial.png"), 760, 460);
         window.DataContext = new Preview(model, "Midgard", "Sincronização pendente",
             "Progresso local salvo. Aguardando outro anfitrião liberar o mundo. Você pode exportar uma cópia para recuperação.");
-        Render(window, Path.Combine(output, "pending.png"), 660, 680);
+        Render(window, Path.Combine(output, "pending.png"), 820, 540);
         window.DataContext = new Preview(model, "Um mundo com um nome bastante longo para testar o layout",
             "Progresso precisa de atenção", "Outra versão pode ter avançado. Progresso local preservado; exporte para recuperação manual.");
-        Render(window, Path.Combine(output, "conflict.png"), 600, 620);
+        Render(window, Path.Combine(output, "conflict.png"), 760, 460);
+        var settings = new SettingsWindow(new ProfileStore(Path.Combine(output, "settings-profile"), new WindowsCredentialVault()));
+        Render(settings, Path.Combine(output, "settings.png"), 744, 1050);
+        ((System.Windows.Controls.PasswordBox)settings.FindName("SecretBox")).Password = "preview";
+        if (((System.Windows.Controls.TextBlock)settings.FindName("SecretPlaceholder")).Visibility != Visibility.Collapsed) throw new Exception("Secret placeholder overlaps input.");
+        ((System.Windows.Controls.PasswordBox)settings.FindName("SecretBox")).Clear();
+        if (((System.Windows.Controls.TextBlock)settings.FindName("SecretPlaceholder")).Visibility != Visibility.Visible) throw new Exception("Empty secret placeholder missing.");
+        Render(settings, Path.Combine(output, "settings-small.png"), 684, 440);
+        ((System.Windows.Controls.ScrollViewer)settings.Content).ScrollToBottom();
+        Render(settings, Path.Combine(output, "settings-bottom.png"), 684, 440);
+        settings.Close();
+        var profile = new WorldProfile("preview", output,
+            new ProfileConnection { Endpoint = "https://example.invalid", Bucket = "preview", WorldId = "preview", WorldDisplayName = "Midgard", WorldFolderName = "Midgard" },
+            new ProfileLocalSettings { CredentialTarget = "preview", Alias = "Midgard" });
+        var recovery = new RecoveryWindow(profile, output);
+        ((System.Windows.Controls.DataGrid)recovery.FindName("EntriesGrid")).ItemsSource = new[] {
+            new { CreatedAt = DateTimeOffset.Now, Player = "desconhecido", Size = "7.0 MB", Origin = "antes-de-instalar" },
+            new { CreatedAt = DateTimeOffset.Now.AddDays(-1), Player = "antonio", Size = "6.8 MB", Origin = "cópia local" }
+        };
+        Render(recovery, Path.Combine(output, "recovery.png"), 804, 480);
+        recovery.Close();
         window.AllowClose = true;
         window.Close();
         if (trace.ToString().Contains("Error:", StringComparison.OrdinalIgnoreCase))
             throw new Exception("WPF binding errors: " + trace);
-        File.WriteAllText(Path.Combine(output, "result.txt"), "WPF resources, initial view model, command guards and three layout renders passed. No real R2 or Steam access.");
+        File.WriteAllText(Path.Combine(output, "result.txt"), "WPF resources, initial view model, command guards and seven layout renders and secret placeholder checks passed. No real R2 or Steam access.");
         Console.WriteLine("WPF smoke passed: " + output);
         return 0;
     }
-    private static void Render(MainWindow window, string path, double width, double height)
+    private static void Render(Window window, string path, double width, double height)
     {
         var content = (FrameworkElement)window.Content;
         content.Measure(new Size(width, height));
@@ -51,6 +75,9 @@ internal static class Program
         content.UpdateLayout();
         Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
         var image = new RenderTargetBitmap((int)width, (int)height, 96, 96, PixelFormats.Pbgra32);
+        var background = new DrawingVisual();
+        using (var drawing = background.RenderOpen()) drawing.DrawRectangle(window.Background, null, new Rect(0, 0, width, height));
+        image.Render(background);
         image.Render(content);
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(image));
@@ -63,6 +90,14 @@ internal static class Program
         public string StatusTitle => title;
         public string Message => message;
         public bool IsWorking => false;
+        public SyncState State => title.Contains("pendente") ? SyncState.Pending : SyncState.Conflict;
+        public bool IsProgressIndeterminate => false;
+        public double ProgressPercent => 65;
+        public string TransferDetails => "";
+        public string CloudGuidance => "";
+        public IReadOnlyList<WorldProfile> AvailableProfiles => commands.AvailableProfiles;
+        public WorldProfile? ActiveProfile { get; set; }
+        public AsyncCommand ResetCommand => commands.ResetCommand;
         public AsyncCommand PlayCommand => commands.PlayCommand;
         public AsyncCommand ConfigureCommand => commands.ConfigureCommand;
         public AsyncCommand ReloadCommand => commands.ReloadCommand;
