@@ -2,7 +2,8 @@ using ValheimWorldSync.Core.Abstractions;
 using ValheimWorldSync.Core.Models;
 namespace ValheimWorldSync.Core.Synchronization;
 
-public sealed record SyncOptions(string WorldId, string WorldPath, string RepositoryIdentity, string DataRoot, string Player, string InstallationId, int BackupCount = 10);
+public sealed record SyncOptions(string WorldId, string WorldPath, string RepositoryIdentity, string DataRoot, string Player,
+    string InstallationId, int BackupCount = 10, string? WorldDisplayName = null, string? WorldFolderName = null);
 
 public sealed class SyncEngine
 {
@@ -32,7 +33,7 @@ public sealed class SyncEngine
         Set(SyncState.Checking, "Verificando disponibilidade do mundo…");
         var sessionId = Guid.NewGuid().ToString("N");
         Set(SyncState.Acquiring, "Reservando o mundo…");
-        var manifest = await lease.AcquireAsync(sessionId, token);
+        var manifest = await UpgradeManifestAsync(sessionId, await lease.AcquireAsync(sessionId, token), token);
         if (manifest.Current is null)
         {
             await lease.ReleaseAsync(sessionId, token);
@@ -76,7 +77,7 @@ public sealed class SyncEngine
         await archive.RecoverInstallAsync(options.WorldPath, () => game.IsRunning, token);
         var sessionId = Guid.NewGuid().ToString("N");
         Set(SyncState.Acquiring, "Reservando o mundo para a primeira importação…");
-        var manifest = await lease.AcquireAsync(sessionId, token);
+        var manifest = await UpgradeManifestAsync(sessionId, await lease.AcquireAsync(sessionId, token), token);
         if (manifest.Current is not null)
         {
             await lease.ReleaseAsync(sessionId, token);
@@ -171,10 +172,16 @@ public sealed class SyncEngine
     {
         EnsureGameClosed();
         var snapshot = session.Snapshot ?? throw new InvalidDataException("Snapshot pendente ausente.");
+        if (string.IsNullOrWhiteSpace(snapshot.Version.CreatedBy))
+        {
+            snapshot = snapshot with { Version = snapshot.Version with { CreatedBy = options.Player } };
+            session = session with { Snapshot = snapshot };
+            await journal.WriteAsync(session, token);
+        }
         await archive.VerifyAsync(snapshot, token);
         await EnsureLocalMatchesSnapshot(snapshot, token);
         Set(SyncState.Acquiring, "Confirmando posse e versão-base para publicar…");
-        var manifest = await lease.AcquireAsync(session.SessionId, token);
+        var manifest = await UpgradeManifestAsync(session.SessionId, await lease.AcquireAsync(session.SessionId, token), token);
         if (manifest.Current?.Id == snapshot.Version.Id)
         {
             await Finish(session, token);
@@ -244,6 +251,19 @@ public sealed class SyncEngine
         if (await archive.GetTreeHashAsync(options.WorldPath, token) != snapshot.Version.TreeHash)
             throw new WorldConflictException();
         EnsureSafeToCapture();
+    }
+    private async Task<WorldManifest> UpgradeManifestAsync(string sessionId, WorldManifest manifest, CancellationToken token)
+    {
+        if (manifest.SchemaVersion == 2) return manifest;
+        var folder = options.WorldFolderName ?? Path.GetFileName(Path.GetFullPath(options.WorldPath));
+        var display = options.WorldDisplayName ?? folder;
+        return await lease.MutateOwned(sessionId, current => current with
+        {
+            SchemaVersion = 2,
+            WorldDisplayName = display,
+            WorldFolderName = folder,
+            RetentionCount = options.BackupCount
+        }, token);
     }
     private static bool IsAncestorOf(string possibleAncestor, string path)
     {

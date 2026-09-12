@@ -1,6 +1,9 @@
 namespace ValheimWorldSync.Core.Models;
 
-public sealed record WorldVersion(string Id, string Key, string Sha256, string TreeHash, long Size, DateTimeOffset CreatedAt);
+public sealed record WorldVersion(string Id, string Key, string Sha256, string TreeHash, long Size, DateTimeOffset CreatedAt)
+{
+    public string? CreatedBy { get; init; }
+}
 public sealed record WorldLease(string Player, string InstallationId, string SessionId, DateTimeOffset ExpiresAt);
 public sealed record WorldManifest
 {
@@ -12,11 +15,18 @@ public sealed record WorldManifest
     public WorldLease? Lease { get; init; }
     public WorldVersion[] History { get; init; } = [];
     public string[] PendingDeletes { get; init; } = [];
+    public string? WorldDisplayName { get; init; }
+    public string? WorldFolderName { get; init; }
+    public int? RetentionCount { get; init; }
 
     public void Validate(string worldId)
     {
-        if (SchemaVersion != 1 || SaveFormat != "valheim-1.0-directory" || WorldId != worldId)
+        if (SchemaVersion is not (1 or 2) || SaveFormat != "valheim-1.0-directory" || WorldId != worldId)
             throw new InvalidDataException("Manifesto incompatível com o mundo configurado.");
+        if (SchemaVersion == 2 && (string.IsNullOrWhiteSpace(WorldDisplayName) ||
+            string.IsNullOrWhiteSpace(WorldFolderName) || WorldFolderName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+            RetentionCount is < 0 or > 1000 or null))
+            throw new InvalidDataException("Metadados do manifesto v2 são inválidos.");
         if (History is null || PendingDeletes is null || string.IsNullOrWhiteSpace(Revision))
             throw new InvalidDataException("Manifesto inválido.");
         foreach (var version in History.Concat(Current is null ? [] : new[] { Current }))

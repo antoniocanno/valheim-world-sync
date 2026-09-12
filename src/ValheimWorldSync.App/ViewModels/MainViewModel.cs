@@ -98,7 +98,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             var game = new PollingGameSession(new WindowsGamePlatform());
             engine = new(repository, new WorldArchive(profile.Root, Path.Combine(dataRoot, "recovery", profile.Id)), new FileSessionJournal(profile.Root), game,
                 new(configuration.WorldId, configuration.WorldPath, configuration.Endpoint.TrimEnd('/') + "/" + configuration.Bucket,
-                    profile.Root, configuration.Player, installation.Id, configuration.BackupCount));
+                    profile.Root, configuration.Player, installation.Id, configuration.BackupCount,
+                    profile.Connection.WorldDisplayName, profile.Connection.WorldFolderName));
             engine.StatusChanged += OnStatus;
         }
         catch (Exception e) { Error(e); }
