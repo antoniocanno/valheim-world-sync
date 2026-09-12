@@ -38,12 +38,22 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private double progressPercent;
     private string transferDetails = "";
     private bool hasTransferProgress;
+    private IReadOnlyList<WorldProfile> availableProfiles = [];
+    private WorldProfile? activeProfile;
+    private string cloudGuidance = "";
     public string Message { get => message; private set { message = value; Changed(); } }
     public string StatusTitle { get => statusTitle; private set { statusTitle = value; Changed(); } }
     public string WorldLabel { get => worldLabel; private set { worldLabel = value; Changed(); } }
     public double ProgressPercent { get => progressPercent; private set { progressPercent = value; Changed(); } }
     public string TransferDetails { get => transferDetails; private set { transferDetails = value; Changed(); } }
     public bool IsProgressIndeterminate => IsWorking && !hasTransferProgress;
+    public IReadOnlyList<WorldProfile> AvailableProfiles { get => availableProfiles; private set { availableProfiles=value; Changed(); } }
+    public WorldProfile? ActiveProfile
+    {
+        get => activeProfile;
+        set { if(value is not null && value.Id!=activeProfile?.Id && !IsWorking) _=SelectProfileAsync(value); }
+    }
+    public string CloudGuidance { get => cloudGuidance; private set { cloudGuidance=value; Changed(); } }
     public bool IsWorking => localWork || engine?.IsBusy == true;
     public bool CanExit => !IsWorking && !(profile is not null && File.Exists(Path.Combine(profile.Root, "session.json")) && new WindowsGamePlatform().FindProcesses().Count != 0);
     public SyncState State { get; private set; } = SyncState.Idle;
@@ -95,6 +105,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             }
             settings = catalog.Settings;
             profile = catalog.Selected;
+            AvailableProfiles = catalog.Profiles;
+            activeProfile = profile; Changed(nameof(ActiveProfile));
             if (profile is null)
             {
                 configuration = null;
@@ -105,7 +117,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             var credentials = await profileStore.ReadCredentialsAsync(profile, lifetime.Token)
                 ?? throw new InvalidDataException("As credenciais protegidas deste perfil não foram encontradas.");
             configuration = profile.ToLegacyConfiguration(credentials, settings.PlayerName);
-            WorldLabel = string.IsNullOrWhiteSpace(configuration.WorldFolderName) ? "NENHUM MUNDO CONFIGURADO" : configuration.WorldFolderName;
+            WorldLabel = $"{profile.Connection.WorldDisplayName} · pasta: {profile.Connection.WorldFolderName}";
+            CloudGuidance = ValheimSaveDiscovery.Detect(Path.GetDirectoryName(profile.SavesRoot)).Guidance ?? "";
             configuration.Validate();
             var installation = await InstallationIdentity.LoadOrCreateAsync(dataRoot, lifetime.Token);
             log = new StatusLog(profile.Root);
@@ -180,6 +193,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         var window = new SettingsWindow(profileStore) { Owner = Application.Current.MainWindow };
         if (window.ShowDialog() == true) await InitializeAsync();
+    }
+    private async Task SelectProfileAsync(WorldProfile selected)
+    {
+        try { await profileStore.SelectAsync(selected.Id, lifetime.Token); await InitializeAsync(); }
+        catch(Exception exception) { Error(exception); }
     }
     private async Task ImportAsync()
     {

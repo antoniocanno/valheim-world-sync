@@ -82,6 +82,13 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
         await DurableJson.WriteAsync(Path.Combine(profile.Root, "local.json"), local, token);
     }
 
+    public async Task SelectAsync(string profileId, CancellationToken token = default)
+    {
+        var catalog = await LoadOrMigrateAsync(token);
+        if (catalog.Profiles.All(candidate => candidate.Id != profileId)) throw new InvalidDataException("Perfil não encontrado.");
+        await SaveSettingsAsync(catalog.Settings with { SelectedProfileId = profileId }, token);
+    }
+
     public async Task DeleteAsync(WorldProfile profile, CancellationToken token = default)
     {
         if (File.Exists(Path.Combine(profile.Root, "session.json"))) throw new InvalidDataException("Resolva a sessão deste perfil antes de excluí-lo.");

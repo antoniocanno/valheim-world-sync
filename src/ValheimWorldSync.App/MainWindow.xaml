@@ -13,6 +13,7 @@
                 <TextBlock Text="VALHEIM / WORLD SYNC" FontSize="12" FontWeight="SemiBold" Foreground="#A5C98E"/>
                 <TextBlock Text="Um mundo. Sua próxima aventura." FontSize="25" FontWeight="SemiBold" Margin="0,10,0,4" TextWrapping="Wrap"/>
                 <TextBlock Text="O progresso acompanha quem vai hospedar a partida." Foreground="{StaticResource MutedBrush}" FontSize="14"/>
+                <ComboBox ItemsSource="{Binding AvailableProfiles}" SelectedItem="{Binding ActiveProfile}" DisplayMemberPath="Local.Alias" Margin="0,14,0,0" MinWidth="260" HorizontalAlignment="Left"/>
             </StackPanel>
             <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="#344C3C" BorderThickness="1" CornerRadius="10" Padding="22" Margin="0,25,0,20">
                 <StackPanel>
@@ -25,6 +26,7 @@
             </Border>
             <Button Grid.Row="2" Content="Jogar" Command="{Binding PlayCommand}" FontSize="19" FontWeight="SemiBold" Padding="18,14" Background="#B5D69E" Foreground="#142119" BorderBrush="#B5D69E"/>
             <TextBlock Grid.Row="3" Text="O app prepara o save e abre o Valheim. Escolha seu personagem e o mundo dentro do jogo." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,10,0,20"/>
+            <TextBlock Grid.Row="3" Text="{Binding CloudGuidance}" TextWrapping="Wrap" Foreground="#E6B98F" FontSize="12" Margin="0,45,0,10"/>
             <StackPanel Grid.Row="4">
                 <UniformGrid Columns="3" Margin="-4,0">
                     <Button Content="Configuração" Command="{Binding ConfigureCommand}" Margin="4"/>
