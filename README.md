@@ -1,139 +1,59 @@
 # Valheim World Sync
 
-Aplicativo Windows para alternar o anfitrião de um mundo local de Valheim entre amigos.
-WPF + bandeja, .NET 10 e armazenamento Cloudflare R2. O app baixa o mundo antes de abrir
-o jogo e publica o progresso quando o processo do Valheim termina.
-
-**Estado:** v1 implementada com testes locais e renderização WPF. A compatibilidade com
-R2 e o round-trip estrutural de um save real do Valheim 1.0 foram validados. A abertura
-da cópia no jogo e o fluxo com duas contas Steam continuam necessários antes de usar o
-mundo principal do grupo.
+Aplicativo Windows em .NET 10/WPF que alterna o anfitrião de um mundo local do Valheim entre amigos usando Cloudflare R2. Antes de abrir o jogo, o launcher adquire uma lease e baixa a versão atual; ao fechar o processo do Valheim, cria um snapshot completo e publica o progresso por CAS.
 
 ## Primeiro uso
 
-1. Execute `ValheimWorldSync.exe`. Não é necessário instalar .NET. Steam e Valheim
-   precisam estar instalados separadamente.
-2. Abra **Configuração**. O app cria
-   `%LOCALAPPDATA%\ValheimWorldSync\config.json` sem credenciais.
-   Preencha endpoint S3 R2, bucket, chaves, apelido e um `worldId` igual para todo o grupo.
-   O arquivo [config.example.json](config.example.json) descreve os campos.
-3. Use um bucket privado exclusivo para este mundo. As chaves precisam permitir ler,
-   escrever e excluir objetos nesse bucket. O identificador de cada instalação é
-   criado separadamente pelo app e não precisa ser
-   compartilhado. Não publique o arquivo com credenciais nem o coloque no Git.
-4. Garanta que o mundo está salvo **localmente**, na pasta de saves do Valheim. Para
-   mundos anteriores ao formato 1.0, converta e salve pelo próprio jogo primeiro.
-   O app não sincroniza Steam Cloud e não converte saves.
-5. No computador que possui o mundo inicial, feche o Valheim e escolha **Importar mundo
-   local**. A origem pode estar em Downloads ou em outra pasta: o app cria um snapshot,
-   copia-o para `savesRoot\worldFolderName` — a pasta efetivamente usada pelo jogo — e
-   preserva a origem. Se o destino já existir, ele fica guardado como backup. Selecione
-   a pasta de um único mundo 1.0, não a pasta `worlds_local` inteira. O bucket precisa
-   estar sem versão vigente.
-6. Nos demais computadores, reutilize `endpoint`, `bucket`, credenciais, `worldId`,
-   `worldFolderName` e retenção. Cada amigo ajusta apenas `player` e aponta `savesRoot`
-   para a pasta local do Valheim naquele PC. A identidade da instalação é automática.
-   Clique em **Recarregar** e depois em **Jogar**; não importe outra cópia.
-7. Clique em **Jogar**. Depois que o app abrir o Valheim, escolha personagem, mundo e
-   a opção de iniciar servidor dentro do jogo.
-8. Ao encerrar o Valheim, aguarde **Sincronizado**. Fechar somente a janela do app o
-   mantém na bandeja. O comando Sair fica bloqueado durante a sessão/sincronização.
+1. Execute `ValheimWorldSync.exe`. O aplicativo é self-contained; Steam e Valheim continuam sendo dependências externas.
+2. Informe seu nome local e escolha **Criar mundo compartilhado** ou **Entrar com convite**.
+3. Ao criar, informe endpoint S3, bucket e chaves R2, use **Testar R2** e selecione a pasta completa do mundo. O launcher deriva o nome da pasta e usa `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\worlds_local` por padrão.
+4. Publique o mundo com **Importar mundo local** e exporte um `.vwsinvite`. O convite é cifrado por senha; envie arquivo e senha por canais separados.
+5. Para entrar, importe o convite e informe sua senha. Caminhos, nome do jogador e identidade da instalação nunca vêm do computador do dono.
+6. Clique em **Jogar** e escolha no Valheim o nome exato destacado pelo launcher. Aguarde **Sincronizado** após encerrar o jogo.
 
-Quando outra pessoa estiver hospedando, use **Amigos na Steam** e entre pela lista de
-amigos/convite. O convidado não trava, baixa ou publica o mundo. O status indica uma
-sessão gerenciada aberta; não garante que o anfitrião já abriu o servidor no jogo.
+O aplicativo trabalha apenas com mundos locais. Se detectar sinais de Steam Cloud, mostra a orientação **Manage Saves → Worlds → Move to Local**. Ele nunca altera diretamente os arquivos da Steam Cloud.
 
-### Origem de importação e pasta do jogo
+## Configuração e credenciais
 
-A pasta escolhida em **Importar mundo local** é apenas a origem. Por exemplo, se o dono
-recebeu ou guardou `Downloads\MeuMundo`, o app cria um snapshot dessa pasta e instala
-uma cópia verificada em `savesRoot\worldFolderName`. É essa segunda pasta que o Valheim
-abre e que o app acompanha depois da partida. A pasta em Downloads não participa das
-sincronizações seguintes e permanece intacta como cópia original.
+Os dados ficam em `%LOCALAPPDATA%\ValheimWorldSync`:
 
-No computador do amigo não é necessário existir a pasta de origem. Com o mesmo bucket,
-credenciais, `worldId` e `worldFolderName`, o botão **Jogar** baixa a versão vigente e
-cria/substitui o destino dentro do `savesRoot` daquele PC. O amigo usa seu próprio
-`player`; `installation.json` é gerado automaticamente e nunca deve ser copiado.
+- `settings.json`: jogador global, onboarding e perfil selecionado;
+- `installation.json`: identidade local desta instalação;
+- `profiles/<id>/connection.json`: endpoint, bucket, mundo, prefixo e metadados não secretos;
+- `profiles/<id>/local.json`: alias, override avançado do save e referência da credencial;
+- `profiles/<id>/session.json`: sessão durável do perfil;
+- `recovery/<id>`: ZIPs verificados e metadados de recuperação.
 
-## Rede, conflitos e recuperação
+Access Key ID e Secret Access Key ficam no Windows Credential Manager sob `ValheimWorldSync/profile/<id>/r2`. A migração do antigo `config.json` é automática: o arquivo legado só é removido depois de gravar e reler a credencial protegida e concluir os novos arquivos.
 
-- O heartbeat continua durante download, jogo, backup e upload: intervalo de 60 s e
-  TTL de 180 s. A expiração permite a outro app adquirir posse via CAS; não é uma
-  exclusão automática feita pelo R2.
-- Após falha transitória, há até cinco tentativas com backoff. Pendências são guardadas
-  em disco e verificadas a cada 60 s enquanto o app estiver aberto.
-- Perder posse não encerra o jogo. O progresso local só pode ser publicado após
-  readquirir posse e confirmar que a versão remota não avançou.
-- Em conflito, **Exportar progresso** salva um ZIP para recuperação manual.
-  **Voltar à nuvem…** requer confirmação, conserva um snapshot local e encerra a
-  pendência. O próximo Jogar baixa a nuvem. Não existe mesclagem de mundos.
-- **Recuperação** abre a pasta de dados do app. `session.json` registra a sessão ativa,
-  `last-session.json` a última concluída e `snapshots/` guarda as cópias locais.
-  Instalações preservam o diretório anterior em `.vws-backup-<id>`, ao lado do mundo.
-- Após crash em um ponto em que não foi possível registrar a identidade do processo,
-  a recuperação é conservadora: exige fechar o jogo e resolver a pendência manualmente.
-- Se o jogo já estava aberto fora do app, seus arquivos não serão substituídos nem
-  enviados automaticamente. Não abra o jogo por fora enquanto o app prepara os saves.
-- Cópias locais, arquivos de staging e objetos de uploads abandonados não são apagados
-  automaticamente na v1. Podem consumir espaço; remova somente após verificar que
-  não são necessários à recuperação, com app e jogo fechados.
-- A sincronização conserva bytes já salvos em disco; não recupera progresso que o jogo
-  ainda não salvou antes de um crash. Um ZIP íntegro também não prova a validade interna
-  de um save para o jogo.
+Vários perfis podem compartilhar um bucket. Novos mundos usam `worlds/<worldId>/`; perfis legados preservam o prefixo vazio para não mover objetos existentes.
 
-## Armazenamento e limites
+## Concorrência, recuperação e reset
 
-`lock.json` é o manifesto versionado com posse, referência vigente, histórico e fila
-de exclusões. Os ZIPs ficam em `backups/<timestamp>-<id>.zip`. Não existe `current.zip`
-mutável: primeiro o ZIP é enviado, depois o ponteiro é publicado por CAS.
+- Heartbeat de 60 segundos e TTL de 180 segundos durante download, jogo, upload, retry e operações administrativas.
+- Até cinco tentativas com backoff; a UI mostra bytes, tamanho total, tentativa e espera.
+- ZIP imutável publicado antes da troca CAS do manifesto. Perder a lease preserva o progresso local.
+- Staging fica em `.vws-work-*` no diretório pai de `worlds_local`, mantendo os renomes no mesmo volume sem aparecer no seletor do jogo.
+- O mundo substituído é compactado e verificado em `recovery/<perfil>`; artefatos legados `.vws-backup-*` e `.vws-staging-*` também são migrados.
+- **Recuperação** lista data, jogador, tamanho e origem, com exportação, restauração local e exclusão explícita.
+- **Voltar à nuvem** preserva o progresso divergente antes de limpar a pendência.
+- **Reinicializar remoto** exige Valheim fechado, lease exclusiva, checkbox e digitação do nome exato. O remoto anterior é baixado para recuperação e permanece no histórico antes da publicação CAS.
 
-Por padrão ficam a versão vigente e **10 anteriores** (`backupCount`, de 0 a 1000).
-A limpeza só apaga versões retiradas do histórico por CAS; falhas deixam exclusões
-pendentes para a próxima sincronização. Objetos abandonados não fazem parte da contagem.
-Custos e disponibilidade de cotas do R2 dependem do uso e da conta.
+Não há mesclagem de mundos. Qualquer integrante com credencial de escrita pode reinicializar o remoto; isolamento real de proprietário exigiria um serviço de autorização externo ao R2.
 
-A v1 usa upload simples: ZIP até **4 GiB**, conteúdo expandido até **32 GiB** e até
-500 mil entradas. Links/junctions e caminhos ZIP inseguros são rejeitados. Um mundo por
-configuração/bucket, Windows x64, clientes confiáveis na mesma versão de protocolo e
-versões compatíveis do jogo. Não inclui personagens, mods, crossplay, servidor dedicado
-ou restauração automática de versões históricas.
+## Protocolo e limites
+
+O manifesto `lock.json` aceita schemas v1 e v2. O v2 publica nome exibido, pasta canônica, retenção e autor das novas versões. A atualização ocorre somente com lease e CAS. Snapshots ficam em `backups/<timestamp>-<id>.zip` dentro do prefixo do mundo.
+
+Limites atuais: ZIP de 4 GiB, conteúdo expandido de 32 GiB e 500 mil entradas. Links, junctions, dispositivos Windows e caminhos ZIP inseguros são rejeitados. Personagens, mods, conversão de saves legados e servidor dedicado ficam fora do escopo.
 
 ## Desenvolvimento
 
-SDK .NET 10 (mínimo 10.0.302, com roll-forward para feature bands posteriores).
+Requer SDK .NET 10.0.302 ou feature band posterior:
 
 ```powershell
 ./scripts/verify.ps1
 ./scripts/publish.ps1
 ```
 
-O executável sai em `artifacts/publish/win-x64/ValheimWorldSync.exe`.
-Ele inclui o runtime; bibliotecas nativas podem ser extraídas em uma pasta temporária
-pelo .NET. O build não usa trimming. O executável não é assinado digitalmente.
-
-Projetos: Core (protocolo e estados), Infrastructure (R2 e arquivos), App (WPF/Steam),
-Diagnostics (console), UiSmoke (renderização sem acessar jogo ou R2) e dois projetos
-de testes. xUnit v3 usa Microsoft Testing Platform no SDK .NET 10; o adaptador
-Visual Studio continua disponível. Pacotes estão fixados e seus lockfiles versionados.
-
-Logs locais limitados a dois arquivos de aproximadamente 1 MiB contêm apenas horários
-e nomes de estados; não contêm chaves, endpoints ou conteúdo dos saves.
-
-### R2 real — execução explícita
-
-Prepare um arquivo separado com credenciais para **um bucket exclusivo de testes**.
-Nunca use o mundo principal para validar operações do protocolo.
-
-```powershell
-dotnet run --project tools/ValheimWorldSync.Diagnostics -- status C:\caminho\config-teste.json
-dotnet run --project tools/ValheimWorldSync.Diagnostics -- cas-test C:\caminho\config-teste.json
-$env:VWS_R2_TEST_CONFIG = 'C:\caminho\config-teste.json'
-dotnet test --project tests/ValheimWorldSync.IntegrationTests -c Release
-```
-
-Sem essa variável, o teste é marcado como **skipped**, não como validação real concluída.
-As operações usam um prefixo `vws-tests/<id>/` exclusivo e preservam evidências para
-inspeção. Uma limpeza posterior pode remover somente esses prefixos de teste.
-
-Consulte [arquitetura](docs/architecture.md) e [aceitação](docs/acceptance.md).
+O executável único sai em `artifacts/publish/win-x64/ValheimWorldSync.exe`. Testes R2 que alteram manifesto exigem `VWS_R2_TEST_CONFIG` apontando para um bucket ou prefixo exclusivo.
