@@ -151,10 +151,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
     private async Task OpenConfiguration()
     {
-        Directory.CreateDirectory(dataRoot);
-        OpenShell(dataRoot);
-        Message = "Os perfis locais estão separados. Use a tela de configuração para alterá-los.";
-        await Task.CompletedTask;
+        var window = new SettingsWindow(profileStore) { Owner = Application.Current.MainWindow };
+        if (window.ShowDialog() == true) await InitializeAsync();
     }
     private async Task ImportAsync()
     {

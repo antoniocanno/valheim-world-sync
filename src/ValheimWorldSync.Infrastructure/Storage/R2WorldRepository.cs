@@ -127,6 +127,26 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
         CheckKey(key);
         await Retry(async () => { await client.DeleteObjectAsync(bucket, prefix + key, cancellationToken); return true; }, cancellationToken);
     }
+    public async Task TestConnectionAsync(CancellationToken cancellationToken = default)
+    {
+        var key = prefix + "diagnostics/" + Guid.NewGuid().ToString("N") + ".json";
+        var payload = Guid.NewGuid().ToString("N");
+        var uploaded = false;
+        try
+        {
+            var request = Put(key);
+            request.ContentBody = payload; request.ContentType = "application/json"; request.IfNoneMatch = "*";
+            await client.PutObjectAsync(request, cancellationToken); uploaded = true;
+            using var response = await client.GetObjectAsync(bucket, key, cancellationToken);
+            using var reader = new StreamReader(response.ResponseStream);
+            if (await reader.ReadToEndAsync(cancellationToken) != payload) throw new InvalidDataException("O R2 devolveu conteúdo diferente no teste.");
+        }
+        finally
+        {
+            if (uploaded) try { await client.DeleteObjectAsync(bucket, key, cancellationToken); }
+            catch when (!cancellationToken.IsCancellationRequested) { throw new IOException("A credencial R2 não possui permissão de exclusão."); }
+        }
+    }
     private static void CheckKey(string key)
     { if (!WorldManifest.ValidKey(key)) throw new InvalidDataException("Chave de snapshot inválida."); }
     private PutObjectRequest Put(string key) => new()

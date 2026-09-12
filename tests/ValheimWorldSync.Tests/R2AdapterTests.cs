@@ -42,6 +42,15 @@ public sealed class R2AdapterTests
         using var repository = new R2WorldRepository(transport, "bucket", "world", () => DateTimeOffset.UtcNow);
         await Assert.ThrowsAsync<AmazonS3Exception>(() => repository.ReadAsync(TestContext.Current.CancellationToken));
     }
+    [Fact]
+    public async Task ConnectionTestWritesReadsAndDeletesOnlyDiagnosticObject()
+    {
+        using var transport = new FakeS3();
+        using var repository = new R2WorldRepository(transport, "bucket", "world", () => DateTimeOffset.UtcNow);
+        await repository.TestConnectionAsync(TestContext.Current.CancellationToken);
+        Assert.StartsWith("diagnostics/", transport.LastKey);
+        Assert.True(transport.Deleted);
+    }
     private sealed class FakeS3() : AmazonS3Client(new BasicAWSCredentials("test", "test"),
         new AmazonS3Config { ServiceURL = "https://s3.us-east-1.amazonaws.com" })
     {
@@ -53,9 +62,12 @@ public sealed class R2AdapterTests
         public string? LastIfMatch { get; private set; }
         public string? LastIfNoneMatch { get; private set; }
         public bool CompatibleSigning { get; private set; }
+        public string LastKey { get; private set; } = "";
+        public bool Deleted { get; private set; }
         public override Task<PutObjectResponse> PutObjectAsync(PutObjectRequest request, CancellationToken cancellationToken = default)
         {
             Writes++;
+            LastKey = request.Key;
             LastIfMatch = request.IfMatch;
             LastIfNoneMatch = request.IfNoneMatch;
             CompatibleSigning = request.DisablePayloadSigning == true && request.DisableDefaultChecksumValidation == true && !request.UseChunkEncoding;
@@ -65,6 +77,10 @@ public sealed class R2AdapterTests
             etag = Guid.NewGuid().ToString("N");
             if (LoseResponse) throw new HttpRequestException("response lost after server committed");
             return Task.FromResult(new PutObjectResponse { ETag = etag });
+        }
+        public override Task<DeleteObjectResponse> DeleteObjectAsync(string bucketName, string key, CancellationToken cancellationToken = default)
+        {
+            LastKey = key; Deleted = true; body = null; return Task.FromResult(new DeleteObjectResponse());
         }
         public override Task<GetObjectResponse> GetObjectAsync(string bucketName, string key, CancellationToken cancellationToken = default)
         {

@@ -72,6 +72,25 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
     public Task<R2Credentials?> ReadCredentialsAsync(WorldProfile profile, CancellationToken token = default) =>
         vault.ReadAsync(profile.Local.CredentialTarget, token);
 
+    public async Task UpdateAsync(WorldProfile profile, ProfileConnection connection, ProfileLocalSettings local,
+        R2Credentials? credentials, CancellationToken token = default)
+    {
+        local = local with { CredentialTarget = profile.Local.CredentialTarget };
+        Validate(profile.Id, connection, local);
+        if (credentials is not null) await vault.WriteAsync(local.CredentialTarget, credentials, token);
+        await DurableJson.WriteAsync(Path.Combine(profile.Root, "connection.json"), connection, token);
+        await DurableJson.WriteAsync(Path.Combine(profile.Root, "local.json"), local, token);
+    }
+
+    public async Task DeleteAsync(WorldProfile profile, CancellationToken token = default)
+    {
+        if (File.Exists(Path.Combine(profile.Root, "session.json"))) throw new InvalidDataException("Resolva a sessão deste perfil antes de excluí-lo.");
+        await vault.DeleteAsync(profile.Local.CredentialTarget, token);
+        if (Directory.Exists(profile.Root)) Directory.Delete(profile.Root, true);
+        var settings = (await LoadOrMigrateAsync(token)).Settings;
+        if (settings.SelectedProfileId == profile.Id) await SaveSettingsAsync(settings with { SelectedProfileId = null }, token);
+    }
+
     private async Task<AppSettings> MigrateLegacyAsync(string legacyPath, CancellationToken token)
     {
         var legacy = await AppConfiguration.LoadAsync(legacyPath);
