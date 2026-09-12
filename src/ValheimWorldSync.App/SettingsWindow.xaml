@@ -1,20 +1,34 @@
-<Window x:Class="ValheimWorldSync.Desktop.SettingsWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Configuração — Valheim World Sync" Width="700" Height="760" WindowStartupLocation="CenterOwner" Icon="vws.ico" Background="{StaticResource CanvasBrush}" Foreground="{StaticResource TextBrush}">
- <ScrollViewer><StackPanel Margin="28">
-  <TextBlock Text="CONFIGURAÇÃO" Foreground="#A5C98E" FontWeight="SemiBold"/><TextBlock Text="Jogador e mundos compartilhados" FontSize="24" Margin="0,8,0,18"/>
-  <TextBlock Text="Nome do jogador"/><TextBox x:Name="PlayerBox" Margin="0,5,0,14"/>
-  <DockPanel><ComboBox x:Name="ProfilesBox" DisplayMemberPath="Local.Alias" SelectionChanged="ProfileChanged" MinWidth="350"/><Button Content="Novo" Click="NewClicked" Margin="8,0,0,0"/><Button Content="Importar convite" Click="ImportInviteClicked" Margin="8,0,0,0"/></DockPanel>
-  <TextBlock Text="Endpoint R2" Margin="0,16,0,0"/><TextBox x:Name="EndpointBox" Margin="0,5,0,10"/>
-  <UniformGrid Columns="2"><StackPanel Margin="0,0,5,0"><TextBlock Text="Bucket"/><TextBox x:Name="BucketBox"/></StackPanel><StackPanel Margin="5,0,0,0"><TextBlock Text="Retenção"/><TextBox x:Name="RetentionBox"/></StackPanel></UniformGrid>
-  <UniformGrid Columns="2" Margin="0,10,0,0"><StackPanel Margin="0,0,5,0"><TextBlock Text="Access Key ID"/><TextBox x:Name="AccessBox"/></StackPanel><StackPanel Margin="5,0,0,0"><TextBlock Text="Secret Access Key (vazio mantém atual)"/><PasswordBox x:Name="SecretBox"/></StackPanel></UniformGrid>
-  <UniformGrid Columns="2" Margin="0,10,0,0"><StackPanel Margin="0,0,5,0"><TextBlock Text="Nome do perfil"/><TextBox x:Name="AliasBox"/></StackPanel><StackPanel Margin="5,0,0,0"><TextBlock Text="ID do mundo"/><TextBox x:Name="WorldIdBox"/></StackPanel></UniformGrid>
-  <UniformGrid Columns="2" Margin="0,10,0,0"><StackPanel Margin="0,0,5,0"><TextBlock Text="Nome exibido"/><TextBox x:Name="DisplayBox"/></StackPanel><StackPanel Margin="5,0,0,0"><TextBlock Text="Pasta do mundo"/><TextBox x:Name="FolderBox"/></StackPanel></UniformGrid>
-  <Button Content="Detectar a partir de um mundo local…" Click="ChooseWorldClicked" HorizontalAlignment="Left" Margin="0,9,0,0"/>
-  <TextBlock Text="Pasta de saves" Margin="0,10,0,0"/>
-  <DockPanel Margin="0,5,0,0">
-   <Button Content="Selecionar pasta…" Click="ChooseSavesRootClicked" DockPanel.Dock="Right" Margin="8,0,0,0"/>
-   <TextBox x:Name="SavesBox"/>
-  </DockPanel>
-  <TextBlock x:Name="ResultText" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,14,0,14"/>
-  <DockPanel><StackPanel Orientation="Horizontal"><Button Content="Excluir perfil" Click="DeleteClicked"/><Button Content="Exportar convite" Click="ExportInviteClicked" Margin="8,0,0,0"/></StackPanel><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Content="Testar R2" Click="TestClicked"/><Button Content="Salvar e ativar" Click="SaveClicked" Margin="8,0,0,0"/></StackPanel></DockPanel>
+<Window x:Class="ValheimWorldSync.Desktop.SettingsWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Configuração — Valheim World Sync" Width="760" Height="820" MinWidth="700" MinHeight="480" WindowStartupLocation="CenterOwner" Icon="vws.ico" Background="{StaticResource Background.Base}" Foreground="{StaticResource Text.Primary}" FontFamily="{StaticResource Font.Interface}" FontSize="13">
+ <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="24">
+  <TextBlock Text="Configuração" Style="{StaticResource HeroTextStyle}"/><TextBlock Text="Jogador e mundos compartilhados" Foreground="{StaticResource Text.Muted}" Margin="0,4,0,24"/>
+  <TextBlock Text="Jogador e perfil" Style="{StaticResource SectionTextStyle}"/><Border BorderBrush="{StaticResource Border.Hairline}" BorderThickness="0,0,0,1" Margin="0,0,0,12"/>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <Label Content="Nome do jogador" Target="{Binding ElementName=PlayerBox}" Foreground="{StaticResource Text.Primary}"/><TextBox Grid.Column="1" x:Name="PlayerBox" Margin="0,0,0,12"/>
+   <Label Grid.Row="1" Content="Perfil" Target="{Binding ElementName=ProfilesBox}" Foreground="{StaticResource Text.Primary}"/>
+   <DockPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,12"><StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button Content="Novo" Click="NewClicked" Margin="12,0,0,0"/><Button Content="Importar convite" Click="ImportInviteClicked" Margin="12,0,0,0"/></StackPanel><ComboBox x:Name="ProfilesBox" DisplayMemberPath="Local.Alias" SelectionChanged="ProfileChanged"/></DockPanel>
+   <Label Grid.Row="2" Content="Nome do perfil" Target="{Binding ElementName=AliasBox}" Foreground="{StaticResource Text.Primary}"/><TextBox Grid.Row="2" Grid.Column="1" x:Name="AliasBox"/>
+  </Grid>
+  <TextBlock Text="Conexão com a nuvem" Style="{StaticResource SectionTextStyle}" Margin="0,24,0,8"/><Border BorderBrush="{StaticResource Border.Hairline}" BorderThickness="0,0,0,1" Margin="0,0,0,12"/>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <Label Content="Endpoint R2" Target="{Binding ElementName=EndpointBox}" Foreground="{StaticResource Text.Primary}"/><TextBox Grid.Column="1" x:Name="EndpointBox" Margin="0,0,0,12"/>
+   <Label Grid.Row="1" Content="Bucket" Target="{Binding ElementName=BucketBox}" Foreground="{StaticResource Text.Primary}"/>
+   <Grid Grid.Row="1" Grid.Column="1" Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="64"/></Grid.ColumnDefinitions><TextBox x:Name="BucketBox"/><Label Grid.Column="1" Content="Retenção" Target="{Binding ElementName=RetentionBox}" Foreground="{StaticResource Text.Primary}" Margin="16,0,8,0"/><TextBox Grid.Column="2" x:Name="RetentionBox"/></Grid>
+   <Label Grid.Row="2" Content="Access Key ID" Target="{Binding ElementName=AccessBox}" Foreground="{StaticResource Text.Primary}"/><TextBox Grid.Row="2" Grid.Column="1" x:Name="AccessBox" FontFamily="{StaticResource Font.Technical}" Margin="0,0,0,12"/>
+   <Label Grid.Row="3" Content="Secret Access Key" Target="{Binding ElementName=SecretBox}" Foreground="{StaticResource Text.Primary}"/>
+   <Grid Grid.Row="3" Grid.Column="1"><PasswordBox x:Name="SecretBox" PasswordChanged="SecretChanged"/><TextBlock x:Name="SecretPlaceholder" Text="(vazio mantém atual)" FontStyle="Italic" Foreground="{StaticResource Text.Muted}" Margin="8,0" VerticalAlignment="Center" IsHitTestVisible="False"/></Grid>
+   <Button Grid.Row="4" Grid.Column="1" Content="Testar R2" Click="TestClicked" HorizontalAlignment="Right" Margin="0,12,0,0"/>
+  </Grid>
+  <TextBlock Text="Identificação do mundo" Style="{StaticResource SectionTextStyle}" Margin="0,24,0,8"/><Border BorderBrush="{StaticResource Border.Hairline}" BorderThickness="0,0,0,1" Margin="0,0,0,12"/>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <Label Content="ID do mundo" Target="{Binding ElementName=WorldIdBox}" Foreground="{StaticResource Text.Primary}"/><TextBox Grid.Column="1" x:Name="WorldIdBox" FontFamily="{StaticResource Font.Technical}" Margin="0,0,0,12"/>
+   <Label Grid.Row="1" Content="Nome exibido" Target="{Binding ElementName=DisplayBox}" Foreground="{StaticResource Text.Primary}"/><TextBox Grid.Row="1" Grid.Column="1" x:Name="DisplayBox" Margin="0,0,0,12"/>
+   <Label Grid.Row="2" Content="Pasta do mundo" Target="{Binding ElementName=FolderBox}" Foreground="{StaticResource Text.Primary}"/><TextBox Grid.Row="2" Grid.Column="1" x:Name="FolderBox"/>
+   <Button Grid.Row="3" Grid.Column="1" Content="Detectar a partir de um mundo local…" Click="ChooseWorldClicked" HorizontalAlignment="Right" Margin="0,12,0,0"/>
+  </Grid>
+  <TextBlock Text="Pasta de saves" Style="{StaticResource SectionTextStyle}" Margin="0,24,0,8"/><Border BorderBrush="{StaticResource Border.Hairline}" BorderThickness="0,0,0,1" Margin="0,0,0,12"/>
+  <DockPanel><Button Content="Selecionar pasta…" Click="ChooseSavesRootClicked" DockPanel.Dock="Right" Margin="12,0,0,0"/><TextBox x:Name="SavesBox" AutomationProperties.Name="Pasta de saves"/></DockPanel>
+  <TextBlock x:Name="ResultText" TextWrapping="Wrap" Foreground="{StaticResource Text.Muted}" Margin="0,12,0,12" AutomationProperties.LiveSetting="Polite"/>
+  <Border BorderBrush="{StaticResource Border.Hairline}" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition MinWidth="24"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Button Content="Excluir perfil" Click="DeleteClicked" Style="{StaticResource DestructiveButtonStyle}"/><StackPanel Grid.Column="2" Orientation="Horizontal"><Button Content="Exportar convite" Click="ExportInviteClicked"/><Button Content="Salvar e ativar" Click="SaveClicked" Style="{StaticResource PrimaryButtonStyle}" Margin="12,0,0,0"/></StackPanel></Grid>
  </StackPanel></ScrollViewer>
 </Window>

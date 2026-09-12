@@ -165,7 +165,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
     private void ApplyStatus(SyncStatus status)
     {
-        State = status.State;
+        State = status.State; Changed(nameof(State));
         log?.Write(status.State);
         StatusTitle = status.State switch
         {

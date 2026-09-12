@@ -22,6 +22,12 @@ public partial class SettingsWindow : Window
         Loaded += async (_, _) => { await Reload(); if (startImport) _ = Dispatcher.BeginInvoke(() => ImportInviteClicked(this, new RoutedEventArgs())); };
     }
 
+    private void SecretChanged(object sender, RoutedEventArgs e)
+    {
+        if (SecretPlaceholder is not null)
+            SecretPlaceholder.Visibility = SecretBox.SecurePassword.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private async Task Reload()
     {
         catalog = await store.LoadOrMigrateAsync();

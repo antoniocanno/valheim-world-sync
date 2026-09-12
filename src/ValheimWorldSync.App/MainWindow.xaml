@@ -1,52 +1,52 @@
-<Window x:Class="ValheimWorldSync.MainWindow"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Valheim World Sync" Width="660" Height="740" MinWidth="600" MinHeight="620"
-    Icon="vws.ico"
-    WindowStartupLocation="CenterScreen" Background="{StaticResource CanvasBrush}" FontFamily="Segoe UI" Foreground="{StaticResource TextBrush}">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{StaticResource CanvasBrush}">
-        <Grid Margin="30">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <StackPanel>
-                <TextBlock Text="VALHEIM / WORLD SYNC" FontSize="12" FontWeight="SemiBold" Foreground="#A5C98E"/>
-                <TextBlock Text="Um mundo. Sua próxima aventura." FontSize="25" FontWeight="SemiBold" Margin="0,10,0,4" TextWrapping="Wrap"/>
-                <TextBlock Text="O progresso acompanha quem vai hospedar a partida." Foreground="{StaticResource MutedBrush}" FontSize="14"/>
-                <ComboBox ItemsSource="{Binding AvailableProfiles}" SelectedItem="{Binding ActiveProfile}" DisplayMemberPath="Local.Alias" Margin="0,14,0,0" MinWidth="260" HorizontalAlignment="Left"/>
-            </StackPanel>
-            <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="#344C3C" BorderThickness="1" CornerRadius="10" Padding="22" Margin="0,25,0,20">
-                <StackPanel>
-                    <TextBlock Text="{Binding WorldLabel}" Foreground="#A5C98E" FontSize="13" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding StatusTitle}" FontSize="23" FontWeight="SemiBold" Margin="0,10,0,8" AutomationProperties.LiveSetting="Polite"/>
-                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="14" LineHeight="22" MinHeight="66"/>
-                    <ProgressBar Height="5" Margin="0,14,0,0" IsIndeterminate="{Binding IsProgressIndeterminate, Mode=OneWay}" Value="{Binding ProgressPercent, Mode=OneWay}" Foreground="#A5C98E" Background="#344C3C" BorderThickness="0"/>
-                    <TextBlock Text="{Binding TransferDetails}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,6,0,0"/>
-                </StackPanel>
-            </Border>
-            <Button Grid.Row="2" Content="Jogar" Command="{Binding PlayCommand}" FontSize="19" FontWeight="SemiBold" Padding="18,14" Background="#B5D69E" Foreground="#142119" BorderBrush="#B5D69E"/>
-            <TextBlock Grid.Row="3" Text="O app prepara o save e abre o Valheim. Escolha seu personagem e o mundo dentro do jogo." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,10,0,20"/>
-            <TextBlock Grid.Row="3" Text="{Binding CloudGuidance}" TextWrapping="Wrap" Foreground="#E6B98F" FontSize="12" Margin="0,45,0,10"/>
-            <StackPanel Grid.Row="4">
-                <UniformGrid Columns="3" Margin="-4,0">
-                    <Button Content="Configuração" Command="{Binding ConfigureCommand}" Margin="4"/>
-                    <Button Content="Recarregar" Command="{Binding ReloadCommand}" Margin="4"/>
-                    <Button Content="Amigos na Steam" Command="{Binding FriendsCommand}" Margin="4"/>
-                </UniformGrid>
-                <UniformGrid Columns="2" Margin="-4,4">
-                    <Button Content="Importar mundo local" Command="{Binding ImportCommand}" Margin="4"/>
-                    <Button Content="Tentar sincronizar" Command="{Binding RetryCommand}" Margin="4"/>
-                    <Button Content="Exportar progresso" Command="{Binding ExportCommand}" Margin="4"/>
-                    <Button Content="Voltar à nuvem…" Command="{Binding UseCloudCommand}" Margin="4"/>
-                    <Button Content="Reinicializar remoto…" Command="{Binding ResetCommand}" Margin="4"/>
-                </UniformGrid>
-            </StackPanel>
-            <Grid Grid.Row="5" Margin="0,20,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <TextBlock Text="Fechar esta janela mantém o app na bandeja." Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/>
-                <Button Grid.Column="1" Content="Recuperação ↗" Command="{Binding RecoveryCommand}" Padding="8,5" FontSize="12" Background="Transparent" BorderBrush="Transparent"/>
-            </Grid>
-        </Grid>
-    </ScrollViewer>
+<Window x:Class="ValheimWorldSync.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:models="clr-namespace:ValheimWorldSync.Core.Models;assembly=ValheimWorldSync.Core"
+ Title="Valheim World Sync" Width="820" Height="540" MinWidth="760" MinHeight="460" Icon="vws.ico" WindowStartupLocation="CenterScreen" Background="{StaticResource Background.Base}" Foreground="{StaticResource Text.Primary}" FontFamily="{StaticResource Font.Interface}" FontSize="13">
+ <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+  <Grid Margin="24">
+   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <StackPanel Margin="0,0,0,24">
+    <TextBlock Text="ᛗ  Valheim World Sync"/>
+    <TextBlock Text="Um mundo. Sua próxima aventura." Style="{StaticResource HeroTextStyle}" Margin="0,12,0,4"/>
+    <TextBlock Text="O progresso acompanha quem vai hospedar." Foreground="{StaticResource Text.Muted}"/>
+   </StackPanel>
+   <Grid Grid.Row="1">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="320"/></Grid.ColumnDefinitions>
+    <StackPanel>
+     <ComboBox ItemsSource="{Binding AvailableProfiles}" SelectedItem="{Binding ActiveProfile}" DisplayMemberPath="Local.Alias" AutomationProperties.Name="Perfil ativo" Margin="0,0,0,12"/>
+     <Border Background="{StaticResource Surface.Card}" BorderBrush="{StaticResource Border.Hairline}" BorderThickness="1" CornerRadius="4">
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="4"/><ColumnDefinition/></Grid.ColumnDefinitions>
+       <Border CornerRadius="4,0,0,4"><Border.Style><Style TargetType="Border"><Setter Property="Background" Value="{StaticResource Status.Warning}"/>
+        <Style.Triggers>
+         <DataTrigger Binding="{Binding State}" Value="{x:Static models:SyncState.Idle}"><Setter Property="Background" Value="{StaticResource Status.Positive}"/></DataTrigger>
+         <DataTrigger Binding="{Binding State}" Value="{x:Static models:SyncState.Playing}"><Setter Property="Background" Value="{StaticResource Status.Positive}"/></DataTrigger>
+         <DataTrigger Binding="{Binding State}" Value="{x:Static models:SyncState.Conflict}"><Setter Property="Background" Value="{StaticResource Destructive.Base}"/></DataTrigger>
+         <DataTrigger Binding="{Binding State}" Value="{x:Static models:SyncState.Error}"><Setter Property="Background" Value="{StaticResource Destructive.Base}"/></DataTrigger>
+        </Style.Triggers></Style></Border.Style></Border>
+       <StackPanel Grid.Column="1" Margin="16">
+        <TextBlock Text="{Binding WorldLabel}" TextTrimming="CharacterEllipsis" ToolTip="{Binding WorldLabel}"/>
+        <TextBlock Text="{Binding StatusTitle}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,8,0,8" AutomationProperties.LiveSetting="Polite"/>
+        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource Text.Muted}"/>
+        <ProgressBar Height="4" Margin="0,12,0,0" IsIndeterminate="{Binding IsProgressIndeterminate, Mode=OneWay}" Value="{Binding ProgressPercent, Mode=OneWay}" Foreground="{StaticResource Accent.Bronze}" Background="{StaticResource Border.Hairline}" BorderThickness="0"/>
+        <TextBlock Text="{Binding TransferDetails}" Style="{StaticResource CaptionTextStyle}" Margin="0,4,0,0"/>
+       </StackPanel>
+      </Grid>
+     </Border>
+     <Button Content="Jogar" Command="{Binding PlayCommand}" Style="{StaticResource PrimaryButtonStyle}" FontSize="18" Margin="0,16,0,0"/>
+     <TextBlock Text="O app prepara o save e abre o Valheim. Escolha seu personagem e o mundo dentro do jogo." Style="{StaticResource CaptionTextStyle}" Margin="0,8,0,0"/>
+     <TextBlock Text="{Binding CloudGuidance}" Style="{StaticResource CaptionTextStyle}" Margin="0,8,0,0"/>
+    </StackPanel>
+    <StackPanel Grid.Column="2">
+     <TextBlock Text="Sessão" Style="{StaticResource CaptionTextStyle}" Margin="0,0,0,8"/>
+     <WrapPanel><Button Content="Amigos na Steam" Command="{Binding FriendsCommand}" Margin="0,0,12,0"/><Button Content="Recarregar" Command="{Binding ReloadCommand}"/></WrapPanel>
+     <TextBlock Text="Mundo" Style="{StaticResource CaptionTextStyle}" Margin="0,24,0,8"/>
+     <WrapPanel><Button Content="Importar mundo local" Command="{Binding ImportCommand}" Margin="0,0,12,12"/><Button Content="Exportar progresso" Command="{Binding ExportCommand}" Margin="0,0,0,12"/><Button Content="Tentar sincronizar" Command="{Binding RetryCommand}" Margin="0,0,12,0"/><Button Content="Voltar à nuvem…" Command="{Binding UseCloudCommand}" Style="{StaticResource CloudButtonStyle}"/></WrapPanel>
+     <TextBlock Text="Avançado" Style="{StaticResource CaptionTextStyle}" Margin="0,24,0,8"/>
+     <WrapPanel><Button Content="Configuração" Command="{Binding ConfigureCommand}" Margin="0,0,12,12"/><Button Content="Reinicializar remoto…" Command="{Binding ResetCommand}" Style="{StaticResource DestructiveButtonStyle}" Margin="0,0,0,12"/></WrapPanel>
+    </StackPanel>
+   </Grid>
+   <DockPanel Grid.Row="2" Margin="0,24,0,0">
+    <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" FontSize="11"><Hyperlink Command="{Binding RecoveryCommand}" Foreground="{StaticResource Text.Muted}">Recuperação ↗</Hyperlink></TextBlock>
+    <TextBlock Text="Fechar esta janela mantém o app na bandeja." Style="{StaticResource CaptionTextStyle}" VerticalAlignment="Center"/>
+   </DockPanel>
+  </Grid>
+ </ScrollViewer>
 </Window>
