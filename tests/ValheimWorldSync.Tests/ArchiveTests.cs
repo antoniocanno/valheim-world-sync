@@ -24,7 +24,10 @@ public sealed class ArchiveTests : IDisposable
         await archive.InstallAsync(snapshot.Version, snapshot.Path, target, () => false);
         Assert.Equal("world-data", await File.ReadAllTextAsync(Path.Combine(target, "chunks", "0.chunk")));
         Assert.False(File.Exists(Path.Combine(target, "old")));
-        Assert.Single(Directory.GetDirectories(root, ".vws-backup-*"));
+        Assert.Empty(Directory.GetDirectories(root, ".vws-backup-*"));
+        Assert.Empty(Directory.GetDirectories(root, ".vws-staging-*"));
+        Assert.Empty(Directory.GetDirectories(root, ".vws-work-*"));
+        Assert.Single(Directory.GetFiles(Path.Combine(root, "app", "recovery"), "*.zip"));
         var repeated = await archive.CreateAsync(target);
         Assert.Equal(snapshot.Version.TreeHash, repeated.Version.TreeHash);
     }
@@ -54,8 +57,9 @@ public sealed class ArchiveTests : IDisposable
     {
         var app = Path.Combine(root, "app");
         var target = Path.Combine(root, "world");
-        var backup = Path.Combine(root, ".vws-backup-" + Guid.NewGuid().ToString("N"));
-        var stage = Path.Combine(root, ".vws-staging-" + Guid.NewGuid().ToString("N"));
+        var workspace = Path.Combine(root, ".vws-work-" + Guid.NewGuid().ToString("N"));
+        var backup = Path.Combine(workspace, "previous");
+        var stage = Path.Combine(workspace, "staging");
         Directory.CreateDirectory(backup);
         Directory.CreateDirectory(stage);
         await File.WriteAllTextAsync(Path.Combine(backup, "saved"), "original");
@@ -84,8 +88,9 @@ public sealed class ArchiveTests : IDisposable
     {
         var app = Path.Combine(root, "app");
         var target = Path.Combine(root, "world");
-        var backup = Path.Combine(root, ".vws-backup-" + Guid.NewGuid().ToString("N"));
-        var stage = Path.Combine(root, ".vws-staging-" + Guid.NewGuid().ToString("N"));
+        var workspace = Path.Combine(root, ".vws-work-" + Guid.NewGuid().ToString("N"));
+        var backup = Path.Combine(workspace, "previous");
+        var stage = Path.Combine(workspace, "staging");
         Directory.CreateDirectory(stage);
         await File.WriteAllTextAsync(Path.Combine(stage, "saved"), "staged");
         await DurableJson.WriteAsync(Path.Combine(app, "install.json"), new WorldArchive.InstallRecord(target, stage, backup));
@@ -97,8 +102,9 @@ public sealed class ArchiveTests : IDisposable
     {
         var app = Path.Combine(root, "app");
         var target = Path.Combine(root, "world");
-        var backup = Path.Combine(root, ".vws-backup-" + Guid.NewGuid().ToString("N"));
-        var stage = Path.Combine(root, ".vws-staging-" + Guid.NewGuid().ToString("N"));
+        var workspace = Path.Combine(root, ".vws-work-" + Guid.NewGuid().ToString("N"));
+        var backup = Path.Combine(workspace, "previous");
+        var stage = Path.Combine(workspace, "staging");
         await DurableJson.WriteAsync(Path.Combine(app, "install.json"), new WorldArchive.InstallRecord(target, stage, backup));
         await Assert.ThrowsAsync<IOException>(() => new WorldArchive(app).RecoverInstallAsync(target, () => false));
         Assert.True(File.Exists(Path.Combine(app, "install.json")));

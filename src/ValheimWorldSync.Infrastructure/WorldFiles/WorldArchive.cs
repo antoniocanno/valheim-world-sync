@@ -7,12 +7,13 @@ using ValheimWorldSync.Infrastructure.Recovery;
 
 namespace ValheimWorldSync.Infrastructure.WorldFiles;
 
-public sealed class WorldArchive(string dataRoot) : IWorldArchive
+public sealed class WorldArchive(string dataRoot, string? recoveryDirectory = null) : IWorldArchive
 {
     public const long MaxZipBytes = 4L * 1024 * 1024 * 1024;
     public const long MaxExpandedBytes = 32L * 1024 * 1024 * 1024;
     public const int MaxEntries = 500_000;
     private readonly string root = Path.GetFullPath(dataRoot);
+    private readonly string recoveryRoot = Path.GetFullPath(recoveryDirectory ?? Path.Combine(dataRoot, "recovery"));
     private string InstallJournal => Path.Combine(root, "install.json");
     public sealed record InstallRecord(string Target, string Staging, string Backup);
     private sealed record FileDigest(string Name, long Size, string Hash);
@@ -106,8 +107,10 @@ public sealed class WorldArchive(string dataRoot) : IWorldArchive
         RejectReparseAncestors(worldPath);
         var parent = Path.GetDirectoryName(worldPath)!;
         Directory.CreateDirectory(parent);
-        var staging = Path.Combine(parent, ".vws-staging-" + Guid.NewGuid().ToString("N"));
-        var backup = Path.Combine(parent, ".vws-backup-" + Guid.NewGuid().ToString("N"));
+        var workspaceParent = Path.GetDirectoryName(parent)!;
+        var workspace = Path.Combine(workspaceParent, ".vws-work-" + Guid.NewGuid().ToString("N"));
+        var staging = Path.Combine(workspace, "staging");
+        var backup = Path.Combine(workspace, "previous");
         Directory.CreateDirectory(staging);
         await using (var input = File.OpenRead(zipPath))
         {
@@ -155,14 +158,15 @@ public sealed class WorldArchive(string dataRoot) : IWorldArchive
         {
             if (gameIsRunning()) throw new IOException("O Valheim abriu durante a instalação.");
             Directory.Move(staging, worldPath);
-            File.Delete(InstallJournal);
         }
         catch
         {
             if (!Directory.Exists(worldPath) && Directory.Exists(backup)) Directory.Move(backup, worldPath);
             throw;
         }
-        // The old directory stays as a local backup. Never automatically delete recovery data.
+        await PreserveBackupAsync(backup, token);
+        if (Directory.Exists(workspace)) Directory.Delete(workspace, true);
+        File.Delete(InstallJournal);
     }
 
     public async Task RecoverInstallAsync(string worldPath, Func<bool> gameIsRunning, CancellationToken token = default)
@@ -172,8 +176,9 @@ public sealed class WorldArchive(string dataRoot) : IWorldArchive
         if (gameIsRunning()) throw new IOException("Feche o Valheim para recuperar uma instalação interrompida.");
         worldPath = Path.GetFullPath(worldPath);
         var parent = Path.GetDirectoryName(worldPath)!;
+        var workspaceParent = Path.GetDirectoryName(parent)!;
         if (!string.Equals(record.Target, worldPath, PathComparison) ||
-            !OwnedSibling(record.Staging, parent, ".vws-staging-") || !OwnedSibling(record.Backup, parent, ".vws-backup-"))
+            !OwnedWorkspace(record.Staging, record.Backup, workspaceParent, parent))
             throw new InvalidDataException("Diário de instalação pertence a outro mundo.");
         RejectReparseAncestors(record.Target);
         RejectReparseAncestors(record.Staging);
@@ -184,12 +189,32 @@ public sealed class WorldArchive(string dataRoot) : IWorldArchive
             else if (Directory.Exists(record.Staging)) Directory.Move(record.Staging, record.Target);
             else throw new IOException("Arquivos de recuperação não encontrados.");
         }
+        else if (Directory.Exists(record.Backup)) await PreserveBackupAsync(record.Backup, token);
+        var workspace = Path.GetDirectoryName(record.Staging)!;
+        if (Directory.Exists(workspace)) Directory.Delete(workspace, true);
         File.Delete(InstallJournal);
     }
-    private static bool OwnedSibling(string path, string parent, string prefix) =>
-        string.Equals(Path.GetDirectoryName(Path.GetFullPath(path)), parent, PathComparison) &&
-        Path.GetFileName(path).StartsWith(prefix, StringComparison.Ordinal) &&
-        Guid.TryParseExact(Path.GetFileName(path)[prefix.Length..], "N", out _);
+    private static bool OwnedWorkspace(string staging, string backup, string parent, string legacyParent)
+    {
+        var workspace = Path.GetDirectoryName(Path.GetFullPath(staging));
+        if (workspace is null || !(string.Equals(Path.GetDirectoryName(workspace), parent, PathComparison) ||
+                string.Equals(Path.GetDirectoryName(workspace), legacyParent, PathComparison)) ||
+            !Path.GetFileName(workspace).StartsWith(".vws-work-", StringComparison.Ordinal) ||
+            !Guid.TryParseExact(Path.GetFileName(workspace)[10..], "N", out _)) return false;
+        return string.Equals(staging, Path.Combine(workspace, "staging"), PathComparison) &&
+            string.Equals(backup, Path.Combine(workspace, "previous"), PathComparison);
+    }
+
+    private async Task PreserveBackupAsync(string backup, CancellationToken token)
+    {
+        if (!Directory.Exists(backup)) return;
+        var snapshot = await CreateAsync(backup, token);
+        await VerifyAsync(snapshot, token);
+        Directory.CreateDirectory(recoveryRoot);
+        var destination = Path.Combine(recoveryRoot, $"{snapshot.Version.CreatedAt:yyyyMMddTHHmmssfffZ}-{snapshot.Version.Id}.zip");
+        File.Move(snapshot.Path, destination);
+        Directory.Delete(backup, true);
+    }
 
     private static void ValidateRelativePath(string name)
     {

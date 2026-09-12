@@ -96,7 +96,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             log = new StatusLog(profile.Root);
             repository = new(configuration, profile.Connection.RemotePrefix);
             var game = new PollingGameSession(new WindowsGamePlatform());
-            engine = new(repository, new WorldArchive(profile.Root), new FileSessionJournal(profile.Root), game,
+            engine = new(repository, new WorldArchive(profile.Root, Path.Combine(dataRoot, "recovery", profile.Id)), new FileSessionJournal(profile.Root), game,
                 new(configuration.WorldId, configuration.WorldPath, configuration.Endpoint.TrimEnd('/') + "/" + configuration.Bucket,
                     profile.Root, configuration.Player, installation.Id, configuration.BackupCount));
             engine.StatusChanged += OnStatus;
@@ -188,7 +188,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             {
                 var journal = new FileSessionJournal(profile!.Root);
                 var session = await journal.ReadAsync(lifetime.Token);
-                var archive = new WorldArchive(profile.Root);
+                var archive = new WorldArchive(profile.Root, Path.Combine(dataRoot, "recovery", profile.Id));
                 var snapshot = session?.Snapshot ?? await archive.CreateAsync(configuration!.WorldPath, lifetime.Token);
                 await archive.VerifyAsync(snapshot, lifetime.Token);
                 if (string.Equals(Path.GetFullPath(dialog.FileName), Path.GetFullPath(snapshot.Path), StringComparison.OrdinalIgnoreCase))
