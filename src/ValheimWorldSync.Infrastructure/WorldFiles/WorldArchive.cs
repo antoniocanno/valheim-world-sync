@@ -7,7 +7,7 @@ using ValheimWorldSync.Infrastructure.Recovery;
 
 namespace ValheimWorldSync.Infrastructure.WorldFiles;
 
-public sealed class WorldArchive(string dataRoot, string? recoveryDirectory = null) : IWorldArchive
+public sealed class WorldArchive(string dataRoot, string? recoveryDirectory = null, string profileId = "legacy") : IWorldArchive
 {
     public const long MaxZipBytes = 4L * 1024 * 1024 * 1024;
     public const long MaxExpandedBytes = 32L * 1024 * 1024 * 1024;
@@ -194,6 +194,18 @@ public sealed class WorldArchive(string dataRoot, string? recoveryDirectory = nu
         if (Directory.Exists(workspace)) Directory.Delete(workspace, true);
         File.Delete(InstallJournal);
     }
+    public async Task<RecoveryEntry> PreserveAsync(LocalSnapshot snapshot, string player, string origin, CancellationToken token = default)
+    {
+        await VerifyAsync(snapshot, token);
+        Directory.CreateDirectory(recoveryRoot);
+        var destination = Path.Combine(recoveryRoot, $"{snapshot.Version.CreatedAt:yyyyMMddTHHmmssfffZ}-{snapshot.Version.Id}.zip");
+        if (!string.Equals(Path.GetFullPath(snapshot.Path), Path.GetFullPath(destination), PathComparison))
+            File.Copy(snapshot.Path, destination, true);
+        var entry = new RecoveryEntry(snapshot.Version.Id, profileId, snapshot.Version.CreatedAt, player,
+            snapshot.Version.Size, origin, snapshot.Version, destination);
+        await DurableJson.WriteAsync(Path.ChangeExtension(destination, ".json"), entry, token);
+        return entry;
+    }
     private static bool OwnedWorkspace(string staging, string backup, string parent, string legacyParent)
     {
         var workspace = Path.GetDirectoryName(Path.GetFullPath(staging));
@@ -210,9 +222,8 @@ public sealed class WorldArchive(string dataRoot, string? recoveryDirectory = nu
         if (!Directory.Exists(backup)) return;
         var snapshot = await CreateAsync(backup, token);
         await VerifyAsync(snapshot, token);
-        Directory.CreateDirectory(recoveryRoot);
-        var destination = Path.Combine(recoveryRoot, $"{snapshot.Version.CreatedAt:yyyyMMddTHHmmssfffZ}-{snapshot.Version.Id}.zip");
-        File.Move(snapshot.Path, destination);
+        await PreserveAsync(snapshot, snapshot.Version.CreatedBy ?? "desconhecido", "antes-de-instalar", token);
+        File.Delete(snapshot.Path);
         Directory.Delete(backup, true);
     }
 

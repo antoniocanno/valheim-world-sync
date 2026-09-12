@@ -74,7 +74,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         RetryCommand = Command(() => RunEngine(() => engine!.RecoverAsync(lifetime.Token)), () => engine is not null && !IsWorking);
         ExportCommand = Command(ExportAsync, () => configuration is not null && !IsWorking);
         UseCloudCommand = Command(UseCloudAsync, () => engine is not null && !IsWorking && State is SyncState.Conflict or SyncState.Pending or SyncState.Error);
-        RecoveryCommand = Command(() => { Directory.CreateDirectory(this.dataRoot); OpenShell(this.dataRoot); return Task.CompletedTask; }, () => true);
+        RecoveryCommand = Command(OpenRecoveryAsync, () => profile is not null && !IsWorking);
         timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
         timer.Tick += OnTimer;
     }
@@ -109,7 +109,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             log = new StatusLog(profile.Root);
             repository = new(configuration, profile.Connection.RemotePrefix);
             var game = new PollingGameSession(new WindowsGamePlatform());
-            engine = new(repository, new WorldArchive(profile.Root, Path.Combine(dataRoot, "recovery", profile.Id)), new FileSessionJournal(profile.Root), game,
+            engine = new(repository, new WorldArchive(profile.Root, Path.Combine(dataRoot, "recovery", profile.Id), profile.Id), new FileSessionJournal(profile.Root), game,
                 new(configuration.WorldId, configuration.WorldPath, configuration.Endpoint.TrimEnd('/') + "/" + configuration.Bucket,
                     profile.Root, configuration.Player, installation.Id, configuration.BackupCount,
                     profile.Connection.WorldDisplayName, profile.Connection.WorldFolderName));
@@ -212,7 +212,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             {
                 var journal = new FileSessionJournal(profile!.Root);
                 var session = await journal.ReadAsync(lifetime.Token);
-                var archive = new WorldArchive(profile.Root, Path.Combine(dataRoot, "recovery", profile.Id));
+                var archive = new WorldArchive(profile.Root, Path.Combine(dataRoot, "recovery", profile.Id), profile.Id);
                 var snapshot = session?.Snapshot ?? await archive.CreateAsync(configuration!.WorldPath, lifetime.Token);
                 await archive.VerifyAsync(snapshot, lifetime.Token);
                 if (string.Equals(Path.GetFullPath(dialog.FileName), Path.GetFullPath(snapshot.Path), StringComparison.OrdinalIgnoreCase))
@@ -245,6 +245,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         Changed(nameof(IsWorking)); Changed(nameof(CanExit)); Changed(nameof(IsProgressIndeterminate));
         foreach (var command in commands) command.Refresh();
+    }
+    private Task OpenRecoveryAsync()
+    {
+        if (profile is null) return Task.CompletedTask;
+        new RecoveryWindow(profile, dataRoot) { Owner = Application.Current.MainWindow }.ShowDialog();
+        return Task.CompletedTask;
     }
     private static string FormatBytes(long bytes) => bytes >= 1024 * 1024 ? $"{bytes / 1024d / 1024d:0.0} MiB" : $"{bytes / 1024d:0.0} KiB";
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));

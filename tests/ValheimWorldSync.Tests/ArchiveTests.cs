@@ -28,6 +28,7 @@ public sealed class ArchiveTests : IDisposable
         Assert.Empty(Directory.GetDirectories(root, ".vws-staging-*"));
         Assert.Empty(Directory.GetDirectories(root, ".vws-work-*"));
         Assert.Single(Directory.GetFiles(Path.Combine(root, "app", "recovery"), "*.zip"));
+        Assert.Single(Directory.GetFiles(Path.Combine(root, "app", "recovery"), "*.json"));
         var repeated = await archive.CreateAsync(target);
         Assert.Equal(snapshot.Version.TreeHash, repeated.Version.TreeHash);
     }

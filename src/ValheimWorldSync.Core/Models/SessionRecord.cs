@@ -21,3 +21,5 @@ public enum TransferDirection { Upload, Download }
 public enum TransferPhase { Starting, Transferring, Verifying, RetryWait, Completed }
 public sealed record TransferProgress(TransferDirection Direction, TransferPhase Phase, long BytesTransferred,
     long TotalBytes, int Attempt, int MaxAttempts, TimeSpan? RetryDelay = null);
+public sealed record RecoveryEntry(string Id, string ProfileId, DateTimeOffset CreatedAt, string Player,
+    long Size, string Origin, WorldVersion Version, string ArchivePath);

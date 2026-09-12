@@ -151,6 +151,7 @@ public sealed class SyncEngine
         await archive.RecoverInstallAsync(options.WorldPath, () => game.IsRunning, token);
         var snapshot = session.Snapshot ?? await archive.CreateAsync(options.WorldPath, token);
         await archive.VerifyAsync(snapshot, token);
+        await archive.PreserveAsync(snapshot, options.Player, "conflito-local", token);
         await journal.WriteAsync(session with { Snapshot = snapshot, Stage = SessionStage.Conflict }, token);
         await lease.ReleaseAsync(session.SessionId, token);
         await journal.ClearAsync(token);

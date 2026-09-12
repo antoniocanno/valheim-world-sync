@@ -8,6 +8,7 @@ public interface IWorldArchive
     Task InstallAsync(WorldVersion version, string zipPath, string worldPath, Func<bool> gameIsRunning, CancellationToken token = default);
     Task RecoverInstallAsync(string worldPath, Func<bool> gameIsRunning, CancellationToken token = default);
     Task VerifyAsync(LocalSnapshot snapshot, CancellationToken token = default);
+    Task<RecoveryEntry> PreserveAsync(LocalSnapshot snapshot, string player, string origin, CancellationToken token = default);
 }
 public interface ISessionJournal
 {
