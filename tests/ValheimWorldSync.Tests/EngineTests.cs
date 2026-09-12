@@ -1,0 +1,112 @@
+using ValheimWorldSync.Core.Abstractions;
+using ValheimWorldSync.Core.Models;
+using ValheimWorldSync.Core.Synchronization;
+using ValheimWorldSync.Infrastructure.Recovery;
+using ValheimWorldSync.Infrastructure.WorldFiles;
+using Xunit;
+namespace ValheimWorldSync.Tests;
+
+public sealed class EngineTests : IDisposable
+{
+    private readonly string root = Path.Combine(Path.GetTempPath(), "vws-engine-" + Guid.NewGuid().ToString("N"));
+    private readonly MemoryRepository repo = new();
+    private readonly TestGame game = new();
+    private readonly FileSessionJournal journal;
+    private readonly WorldArchive archive;
+    private readonly SyncEngine engine;
+    private readonly string world;
+    public EngineTests()
+    {
+        world = Path.Combine(root, "world");
+        Directory.CreateDirectory(world);
+        File.WriteAllText(Path.Combine(world, "chunk"), "initial");
+        journal = new(Path.Combine(root, "app"));
+        archive = new(Path.Combine(root, "app"));
+        engine = new(repo, archive, journal, game, new("world", world, "test", Path.Combine(root, "app"), "A", "a"));
+    }
+    [Fact]
+    public async Task ImportPlayAndClosePublishesAutomatically()
+    {
+        await engine.ImportAsync();
+        var first = (await repo.ReadAsync())!.Manifest.Current!;
+        game.OnExit = () => File.WriteAllTextAsync(Path.Combine(world, "chunk"), "progress");
+        await engine.PlayAsync();
+        var last = (await repo.ReadAsync())!.Manifest;
+        Assert.Equal(SyncState.Idle, engine.Status.State);
+        Assert.NotEqual(first.Id, last.Current!.Id);
+        Assert.Null(last.Lease);
+        Assert.Null(await journal.ReadAsync());
+        Assert.Single(last.History);
+    }
+    [Fact]
+    public async Task FailedUploadPersistsSnapshotAndResumePublishesSameVersion()
+    {
+        repo.FailUpload = true;
+        await engine.ImportAsync();
+        Assert.Equal(SyncState.Pending, engine.Status.State);
+        var pending = await journal.ReadAsync();
+        Assert.NotNull(pending!.Snapshot);
+        var versionId = pending.Snapshot.Version.Id;
+        repo.FailUpload = false;
+        await engine.RecoverAsync();
+        Assert.Equal(versionId, (await repo.ReadAsync())!.Manifest.Current!.Id);
+        Assert.Null(await journal.ReadAsync());
+    }
+    [Fact]
+    public async Task RemoteAdvanceDuringGamePreservesConflictWithoutOverwriting()
+    {
+        await engine.ImportAsync();
+        game.OnExit = async () =>
+        {
+            await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "local progress");
+            repo.UtcNow += TimeSpan.FromSeconds(183);
+            var other = new LeaseCoordinator(repo, "world", "B", "b");
+            var manifest = await other.AcquireAsync("b");
+            await other.PublishAsync("b", manifest.Current!.Id, LeaseTests.Version("other"));
+            await other.ReleaseAsync("b");
+        };
+        await engine.PlayAsync();
+        Assert.Equal(SyncState.Conflict, engine.Status.State);
+        Assert.Equal("other", (await repo.ReadAsync())!.Manifest.Current!.Id);
+        Assert.True(File.Exists((await journal.ReadAsync())!.Snapshot!.Path));
+    }
+    [Fact]
+    public async Task UnchangedSessionDoesNotPublishAnotherVersion()
+    {
+        await engine.ImportAsync();
+        var first = (await repo.ReadAsync())!.Manifest.Current!.Id;
+        await engine.PlayAsync();
+        Assert.Equal(first, (await repo.ReadAsync())!.Manifest.Current!.Id);
+        Assert.Empty((await repo.ReadAsync())!.Manifest.History);
+    }
+    [Fact]
+    public async Task ExternalGameBlocksImportAndNeverPublishes()
+    {
+        game.IsRunning = true;
+        await engine.ImportAsync();
+        Assert.Null(await repo.ReadAsync());
+        Assert.Empty(repo.Objects);
+    }
+    [Fact]
+    public async Task UncertainLaunchIsNotAutomaticallyAdopted()
+    {
+        await journal.WriteAsync(new()
+        {
+            SessionId = "session", WorldId = "world", WorldPath = world,
+            RepositoryIdentity = "test", Stage = SessionStage.Launching
+        });
+        await engine.RecoverAsync();
+        Assert.Equal(SyncState.Conflict, engine.Status.State);
+        Assert.Empty(repo.Objects);
+    }
+    public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    private sealed class TestGame : IGameSession
+    {
+        public bool IsRunning { get; set; }
+        public Func<Task>? OnExit { get; set; }
+        public Task<GameIdentity> LaunchAsync(CancellationToken token = default)
+        { IsRunning = true; return Task.FromResult(new GameIdentity(1, DateTime.UtcNow)); }
+        public async Task WaitForExitAsync(GameIdentity game, CancellationToken token = default)
+        { if (OnExit is not null) await OnExit(); IsRunning = false; }
+    }
+}
