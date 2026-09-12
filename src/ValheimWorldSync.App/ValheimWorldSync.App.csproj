@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -8,4 +8,4 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
-</Project>
+<ItemGroup><ProjectReference Include="../ValheimWorldSync.Infrastructure/ValheimWorldSync.Infrastructure.csproj" /></ItemGroup></Project>
