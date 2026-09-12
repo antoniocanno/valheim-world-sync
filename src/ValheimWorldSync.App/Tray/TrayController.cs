@@ -9,6 +9,7 @@ public sealed class TrayController : IDisposable
 {
     private readonly NotifyIcon icon;
     private readonly ContextMenuStrip menu;
+    private readonly Icon? customIcon;
     private SyncState? lastAlert;
     public TrayController(MainWindow window, MainViewModel model, Action exit)
     {
@@ -18,7 +19,14 @@ public sealed class TrayController : IDisposable
         menu.Items.Add("Tentar sincronizar", null, (_, _) => model.RetryCommand.Execute(null));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Sair", null, (_, _) => exit());
-        icon = new NotifyIcon { Icon = SystemIcons.Application, Text = "Valheim World Sync", Visible = true, ContextMenuStrip = menu };
+        var resourceInfo = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/ValheimWorldSync;component/vws.ico", UriKind.Absolute))
+            ?? System.Windows.Application.GetResourceStream(new Uri("/vws.ico", UriKind.Relative));
+        customIcon = resourceInfo?.Stream is not null
+            ? new Icon(resourceInfo.Stream)
+            : (File.Exists(Path.Combine(AppContext.BaseDirectory, "vws.ico"))
+                ? new Icon(Path.Combine(AppContext.BaseDirectory, "vws.ico"))
+                : (Icon.ExtractAssociatedIcon(Environment.ProcessPath ?? "") ?? SystemIcons.Application));
+        icon = new NotifyIcon { Icon = customIcon, Text = "Valheim World Sync", Visible = true, ContextMenuStrip = menu };
         icon.DoubleClick += (_, _) => Show(window);
         model.StatusUpdated += status =>
         {
@@ -36,5 +44,12 @@ public sealed class TrayController : IDisposable
     {
         window.Show(); window.WindowState = WindowState.Normal; window.Activate();
     }
-    public void Dispose() { icon.Visible = false; icon.Dispose(); menu.Dispose(); }
+    public void Dispose()
+    {
+        icon.Visible = false;
+        icon.Dispose();
+        menu.Dispose();
+        if (customIcon != SystemIcons.Application) customIcon?.Dispose();
+    }
 }
+

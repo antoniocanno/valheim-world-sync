@@ -6,7 +6,11 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>ValheimWorldSync</AssemblyName>
+    <ApplicationIcon>vws.ico</ApplicationIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="vws.ico" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../ValheimWorldSync.Infrastructure/ValheimWorldSync.Infrastructure.csproj" />
     <ProjectReference Include="../ValheimWorldSync.Platform.Windows/ValheimWorldSync.Platform.Windows.csproj" />

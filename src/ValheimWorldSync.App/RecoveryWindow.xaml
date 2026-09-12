@@ -1,4 +1,4 @@
-<Window x:Class="ValheimWorldSync.Desktop.RecoveryWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Recuperação — Valheim World Sync" Width="820" Height="520" WindowStartupLocation="CenterOwner" Background="{StaticResource CanvasBrush}" Foreground="{StaticResource TextBrush}">
+<Window x:Class="ValheimWorldSync.Desktop.RecoveryWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Recuperação — Valheim World Sync" Width="820" Height="520" WindowStartupLocation="CenterOwner" Icon="vws.ico" Background="{StaticResource CanvasBrush}" Foreground="{StaticResource TextBrush}">
  <Grid Margin="25"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <TextBlock Text="Cópias verificadas deste perfil" FontSize="23"/>
   <DataGrid Grid.Row="1" x:Name="EntriesGrid" AutoGenerateColumns="False" IsReadOnly="True" Margin="0,18,0,12" SelectionMode="Single"><DataGrid.Columns>
