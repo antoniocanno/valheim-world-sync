@@ -9,7 +9,11 @@
   <UniformGrid Columns="2" Margin="0,10,0,0"><StackPanel Margin="0,0,5,0"><TextBlock Text="Nome do perfil"/><TextBox x:Name="AliasBox"/></StackPanel><StackPanel Margin="5,0,0,0"><TextBlock Text="ID do mundo"/><TextBox x:Name="WorldIdBox"/></StackPanel></UniformGrid>
   <UniformGrid Columns="2" Margin="0,10,0,0"><StackPanel Margin="0,0,5,0"><TextBlock Text="Nome exibido"/><TextBox x:Name="DisplayBox"/></StackPanel><StackPanel Margin="5,0,0,0"><TextBlock Text="Pasta do mundo"/><TextBox x:Name="FolderBox"/></StackPanel></UniformGrid>
   <Button Content="Detectar a partir de um mundo local…" Click="ChooseWorldClicked" HorizontalAlignment="Left" Margin="0,9,0,0"/>
-  <TextBlock Text="Pasta de saves (avançado; vazio usa detecção automática)" Margin="0,10,0,0"/><TextBox x:Name="SavesBox"/>
+  <TextBlock Text="Pasta de saves" Margin="0,10,0,0"/>
+  <DockPanel Margin="0,5,0,0">
+   <Button Content="Selecionar pasta…" Click="ChooseSavesRootClicked" DockPanel.Dock="Right" Margin="8,0,0,0"/>
+   <TextBox x:Name="SavesBox"/>
+  </DockPanel>
   <TextBlock x:Name="ResultText" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,14,0,14"/>
   <DockPanel><StackPanel Orientation="Horizontal"><Button Content="Excluir perfil" Click="DeleteClicked"/><Button Content="Exportar convite" Click="ExportInviteClicked" Margin="8,0,0,0"/></StackPanel><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Content="Testar R2" Click="TestClicked"/><Button Content="Salvar e ativar" Click="SaveClicked" Margin="8,0,0,0"/></StackPanel></DockPanel>
  </StackPanel></ScrollViewer>

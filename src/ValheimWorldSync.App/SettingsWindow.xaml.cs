@@ -37,22 +37,35 @@ public partial class SettingsWindow : Window
         EndpointBox.Text = c.Endpoint; BucketBox.Text = c.Bucket; RetentionBox.Text = c.RetentionCount.ToString();
         AccessBox.Text = credentials?.AccessKeyId ?? ""; SecretBox.Clear(); AliasBox.Text = l.Alias;
         WorldIdBox.Text = c.WorldId; DisplayBox.Text = c.WorldDisplayName; FolderBox.Text = c.WorldFolderName;
-        SavesBox.Text = l.SavesRootOverride ?? ""; ResultText.Text = "";
+        SavesBox.Text = string.IsNullOrWhiteSpace(l.SavesRootOverride) ? ValheimLocations.DefaultWorldsLocal : l.SavesRootOverride;
+        ResultText.Text = "";
     }
     private void NewClicked(object sender, RoutedEventArgs e) => ClearForNew();
     private void ChooseWorldClicked(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog { Title = "Escolha a pasta completa de um mundo local do Valheim 1.0" };
         if (dialog.ShowDialog(this) != true) return;
-        var name = new DirectoryInfo(dialog.FolderName).Name;
-        FolderBox.Text = name; if (string.IsNullOrWhiteSpace(DisplayBox.Text)) DisplayBox.Text = name;
-        if (string.IsNullOrWhiteSpace(AliasBox.Text)) AliasBox.Text = name;
+        var folder = new DirectoryInfo(dialog.FolderName);
+        FolderBox.Text = folder.Name;
+        if (folder.Parent is not null && string.IsNullOrWhiteSpace(SavesBox.Text))
+            SavesBox.Text = folder.Parent.FullName;
+        if (string.IsNullOrWhiteSpace(DisplayBox.Text)) DisplayBox.Text = folder.Name;
+        if (string.IsNullOrWhiteSpace(AliasBox.Text)) AliasBox.Text = folder.Name;
+    }
+    private void ChooseSavesRootClicked(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Escolha a pasta raiz de saves locais do Valheim (ex: worlds_local)",
+            InitialDirectory = Directory.Exists(SavesBox.Text) ? SavesBox.Text : ValheimLocations.DefaultWorldsLocal
+        };
+        if (dialog.ShowDialog(this) == true) SavesBox.Text = dialog.FolderName;
     }
     private void ClearForNew()
     {
         selected = null; ProfilesBox.SelectedItem = null; EndpointBox.Clear(); BucketBox.Clear(); AccessBox.Clear(); SecretBox.Clear();
         RetentionBox.Text = "10"; AliasBox.Clear(); WorldIdBox.Text = Guid.NewGuid().ToString("N");
-        DisplayBox.Clear(); FolderBox.Clear(); SavesBox.Clear(); ResultText.Text = "Novo perfil.";
+        DisplayBox.Clear(); FolderBox.Clear(); SavesBox.Text = ValheimLocations.DefaultWorldsLocal; ResultText.Text = "Novo perfil.";
     }
     private (ProfileConnection Connection, ProfileLocalSettings Local, R2Credentials? Credentials) Values()
     {
