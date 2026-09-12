@@ -24,6 +24,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly List<AsyncCommand> commands = [];
     private readonly string dataRoot;
     private readonly ProfileStore profileStore;
+    private readonly bool interactive;
     private StatusLog? log;
     private R2WorldRepository? repository;
     private SyncEngine? engine;
@@ -62,6 +63,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         this.dispatcher = dispatcher;
         this.dataRoot = dataRoot ?? AppConfiguration.DataRoot;
+        interactive = dataRoot is null;
         profileStore = new ProfileStore(this.dataRoot, new WindowsCredentialVault());
         PlayCommand = Command(() => RunEngine(() => engine!.PlayAsync(lifetime.Token)),
             () => engine is not null && !IsWorking && State is SyncState.Idle or SyncState.Offline);
@@ -84,6 +86,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             repository?.Dispose(); repository = null; engine = null;
             var catalog = await profileStore.LoadOrMigrateAsync(lifetime.Token);
+            if (interactive && catalog.Profiles.Count == 0 && catalog.Settings.OnboardingVersion == 0)
+            {
+                var onboarding = new OnboardingWindow(profileStore, catalog.Settings.PlayerName) { Owner = Application.Current.MainWindow };
+                if (onboarding.ShowDialog() == true) catalog = await profileStore.LoadOrMigrateAsync(lifetime.Token);
+            }
             settings = catalog.Settings;
             profile = catalog.Selected;
             if (profile is null)

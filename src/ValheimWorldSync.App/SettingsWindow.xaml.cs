@@ -13,7 +13,12 @@ public partial class SettingsWindow : Window
     private readonly ProfileStore store;
     private ProfileCatalog catalog = null!;
     private WorldProfile? selected;
-    public SettingsWindow(ProfileStore store) { InitializeComponent(); this.store = store; Loaded += async (_, _) => await Reload(); }
+    private readonly bool startImport;
+    public SettingsWindow(ProfileStore store, bool startImport = false)
+    {
+        InitializeComponent(); this.store = store; this.startImport = startImport;
+        Loaded += async (_, _) => { await Reload(); if (startImport) _ = Dispatcher.BeginInvoke(() => ImportInviteClicked(this, new RoutedEventArgs())); };
+    }
 
     private async Task Reload()
     {
