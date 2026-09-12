@@ -14,6 +14,7 @@ public partial class SettingsWindow : Window
     private ProfileCatalog catalog = null!;
     private WorldProfile? selected;
     private readonly bool startImport;
+    private string? pendingImportSource;
     public SettingsWindow(ProfileStore store, bool startImport = false)
     {
         InitializeComponent(); this.store = store; this.startImport = startImport;
@@ -47,10 +48,29 @@ public partial class SettingsWindow : Window
         if (dialog.ShowDialog(this) != true) return;
         var folder = new DirectoryInfo(dialog.FolderName);
         FolderBox.Text = folder.Name;
-        if (folder.Parent is not null && string.IsNullOrWhiteSpace(SavesBox.Text))
-            SavesBox.Text = folder.Parent.FullName;
         if (string.IsNullOrWhiteSpace(DisplayBox.Text)) DisplayBox.Text = folder.Name;
         if (string.IsNullOrWhiteSpace(AliasBox.Text)) AliasBox.Text = folder.Name;
+
+        var savesRoot = SavesBox.Text.Trim();
+        var expectedParent = string.IsNullOrWhiteSpace(savesRoot)
+            ? ValheimLocations.DefaultWorldsLocal
+            : Path.GetFullPath(savesRoot);
+        var actualParent = folder.Parent?.FullName ?? string.Empty;
+        var isInsideSaves = string.Equals(
+            Path.GetFullPath(actualParent).TrimEnd(Path.DirectorySeparatorChar),
+            expectedParent.TrimEnd(Path.DirectorySeparatorChar),
+            StringComparison.OrdinalIgnoreCase);
+
+        if (isInsideSaves)
+        {
+            pendingImportSource = null;
+            ResultText.Text = $"Mundo detectado dentro de '{expectedParent}'. Nenhuma cópia necessária ao salvar.";
+        }
+        else
+        {
+            pendingImportSource = folder.FullName;
+            ResultText.Text = $"Mundo selecionado fora da pasta de saves. Ao salvar, '{folder.Name}' será copiado para '{expectedParent}'.";
+        }
     }
     private void ChooseSavesRootClicked(object sender, RoutedEventArgs e)
     {
@@ -97,6 +117,24 @@ public partial class SettingsWindow : Window
     private async void SaveClicked(object sender, RoutedEventArgs e) => await Run(async () =>
     {
         var (connection, local, credentials) = Values();
+
+        if (pendingImportSource is not null)
+        {
+            var savesRoot = string.IsNullOrWhiteSpace(local.SavesRootOverride)
+                ? ValheimLocations.DefaultWorldsLocal
+                : Path.GetFullPath(local.SavesRootOverride);
+            var destination = Path.Combine(savesRoot, connection.WorldFolderName);
+            if (MessageBox.Show(
+                $"Copiar '{pendingImportSource}' para a pasta de saves do Valheim?\n\nDestino: {destination}\n\nA origem será preservada. Se o destino existir, será sobrescrito.",
+                "Copiar mundo para pasta de saves",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                throw new InvalidDataException("Operação cancelada pelo usuário.");
+            Directory.CreateDirectory(destination);
+            foreach (var file in Directory.EnumerateFiles(pendingImportSource))
+                File.Copy(file, Path.Combine(destination, Path.GetFileName(file)), overwrite: true);
+            pendingImportSource = null;
+        }
+
         WorldProfile profile;
         if (selected is null) profile = await store.CreateAsync(connection, local,
             credentials ?? throw new InvalidDataException("Informe as credenciais."));
