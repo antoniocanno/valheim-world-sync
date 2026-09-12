@@ -34,9 +34,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private string message = "Carregando configuração…";
     private string statusTitle = "Preparando";
     private string worldLabel = "MUNDO COMPARTILHADO";
+    private double progressPercent;
+    private string transferDetails = "";
+    private bool hasTransferProgress;
     public string Message { get => message; private set { message = value; Changed(); } }
     public string StatusTitle { get => statusTitle; private set { statusTitle = value; Changed(); } }
     public string WorldLabel { get => worldLabel; private set { worldLabel = value; Changed(); } }
+    public double ProgressPercent { get => progressPercent; private set { progressPercent = value; Changed(); } }
+    public string TransferDetails { get => transferDetails; private set { transferDetails = value; Changed(); } }
+    public bool IsProgressIndeterminate => IsWorking && !hasTransferProgress;
     public bool IsWorking => localWork || engine?.IsBusy == true;
     public bool CanExit => !IsWorking && !(profile is not null && File.Exists(Path.Combine(profile.Root, "session.json")) && new WindowsGamePlatform().FindProcesses().Count != 0);
     public SyncState State { get; private set; } = SyncState.Idle;
@@ -101,6 +107,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                     profile.Root, configuration.Player, installation.Id, configuration.BackupCount,
                     profile.Connection.WorldDisplayName, profile.Connection.WorldFolderName));
             engine.StatusChanged += OnStatus;
+            engine.TransferProgressChanged += OnTransferProgress;
         }
         catch (Exception e) { Error(e); }
         finally { localWork = false; Refresh(); timer.Start(); }
@@ -148,6 +155,17 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         Message = status.Message;
         StatusUpdated?.Invoke(status);
         Refresh();
+    }
+    private void OnTransferProgress(TransferProgress progress)
+    {
+        if (!dispatcher.CheckAccess()) { dispatcher.BeginInvoke(() => OnTransferProgress(progress)); return; }
+        hasTransferProgress = progress.Phase is not TransferPhase.Completed;
+        ProgressPercent = progress.TotalBytes > 0 ? 100d * progress.BytesTransferred / progress.TotalBytes : 0;
+        var action = progress.Direction == TransferDirection.Upload ? "Upload" : "Download";
+        TransferDetails = progress.Phase == TransferPhase.RetryWait
+            ? $"{action}: tentativa {progress.Attempt}/{progress.MaxAttempts}; nova tentativa em {progress.RetryDelay?.TotalSeconds:0}s"
+            : $"{action}: {FormatBytes(progress.BytesTransferred)} de {FormatBytes(progress.TotalBytes)} · tentativa {progress.Attempt}/{progress.MaxAttempts}";
+        Changed(nameof(IsProgressIndeterminate));
     }
     private async Task OpenConfiguration()
     {
@@ -218,9 +236,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private static void OpenShell(string target) { using var process = Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
     private void Refresh()
     {
-        Changed(nameof(IsWorking)); Changed(nameof(CanExit));
+        Changed(nameof(IsWorking)); Changed(nameof(CanExit)); Changed(nameof(IsProgressIndeterminate));
         foreach (var command in commands) command.Refresh();
     }
+    private static string FormatBytes(long bytes) => bytes >= 1024 * 1024 ? $"{bytes / 1024d / 1024d:0.0} MiB" : $"{bytes / 1024d:0.0} KiB";
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
     public void Dispose()
     {

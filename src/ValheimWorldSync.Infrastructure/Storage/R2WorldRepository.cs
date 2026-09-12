@@ -84,12 +84,15 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
             }
         }
     }
-    public async Task UploadAsync(WorldVersion version, string archivePath, CancellationToken cancellationToken = default)
+    public async Task UploadAsync(WorldVersion version, string archivePath, CancellationToken cancellationToken = default, IProgress<TransferProgress>? progress = null)
     {
         CheckKey(version.Key);
         if (version.Size > 4L * 1024 * 1024 * 1024) throw new InvalidDataException("Limite da v1: ZIP de 4 GiB.");
-        await Retry(async () =>
+        var completedAttempt = 1;
+        await Retry(async attempt =>
         {
+            completedAttempt = attempt;
+            progress?.Report(new(TransferDirection.Upload, TransferPhase.Starting, 0, version.Size, attempt, 5));
             try
             {
                 var request = Put(prefix + version.Key);
@@ -97,6 +100,8 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
                 request.ContentType = "application/zip";
                 request.IfNoneMatch = "*";
                 request.Metadata["sha256"] = version.Sha256;
+                request.StreamTransferProgress += (_, e) => progress?.Report(new(TransferDirection.Upload,
+                    TransferPhase.Transferring, e.TransferredBytes, version.Size, attempt, 5));
                 await client.PutObjectAsync(request, cancellationToken);
             }
             catch (AmazonS3Exception e) when (e.StatusCode == HttpStatusCode.PreconditionFailed)
@@ -106,21 +111,34 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
                     throw new InvalidDataException("Colisão de versão: objeto existente não corresponde ao snapshot.");
             }
             return true;
-        }, cancellationToken);
+        }, TransferDirection.Upload, version.Size, progress, cancellationToken);
+        progress?.Report(new(TransferDirection.Upload, TransferPhase.Completed, version.Size, version.Size, completedAttempt, 5));
     }
-    public async Task DownloadAsync(WorldVersion version, string destination, CancellationToken cancellationToken = default)
+    public async Task DownloadAsync(WorldVersion version, string destination, CancellationToken cancellationToken = default, IProgress<TransferProgress>? progress = null)
     {
         CheckKey(version.Key);
-        await Retry(async () =>
+        var completedAttempt = 1;
+        await Retry(async attempt =>
         {
+            completedAttempt = attempt;
+            progress?.Report(new(TransferDirection.Download, TransferPhase.Starting, 0, version.Size, attempt, 5));
             using var response = await client.GetObjectAsync(bucket, prefix + version.Key, cancellationToken);
             await using (var output = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
-                await response.ResponseStream.CopyToAsync(output, cancellationToken);
+            {
+                var buffer = new byte[81920]; long copied = 0; int read;
+                while ((read = await response.ResponseStream.ReadAsync(buffer, cancellationToken)) != 0)
+                {
+                    await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken); copied += read;
+                    progress?.Report(new(TransferDirection.Download, TransferPhase.Transferring, copied, version.Size, attempt, 5));
+                }
+            }
+            progress?.Report(new(TransferDirection.Download, TransferPhase.Verifying, version.Size, version.Size, attempt, 5));
             await using var verify = File.OpenRead(destination);
             if (verify.Length != version.Size || Convert.ToHexString(await SHA256.HashDataAsync(verify, cancellationToken)) != version.Sha256)
                 throw new InvalidDataException("ZIP remoto não corresponde ao hash/tamanho publicado.");
             return true;
-        }, cancellationToken);
+        }, TransferDirection.Download, version.Size, progress, cancellationToken);
+        progress?.Report(new(TransferDirection.Download, TransferPhase.Completed, version.Size, version.Size, completedAttempt, 5));
     }
     public async Task DeleteAsync(string key, CancellationToken cancellationToken = default)
     {
@@ -159,13 +177,21 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
          e is AmazonS3Exception s && ((int)s.StatusCode >= 500 || (int)s.StatusCode == 429 || s.StatusCode == HttpStatusCode.RequestTimeout));
     private static Task Backoff(int attempt, CancellationToken token) =>
         Task.Delay(TimeSpan.FromMilliseconds((1 << attempt) * 1000 + Random.Shared.Next(250)), token);
-    private static async Task<T> Retry<T>(Func<Task<T>> operation, CancellationToken token)
+    private static async Task<T> Retry<T>(Func<int, Task<T>> operation, TransferDirection direction, long total,
+        IProgress<TransferProgress>? progress, CancellationToken token)
     {
         for (var attempt = 0; ; attempt++)
         {
-            try { return await operation(); }
-            catch (Exception e) when (Transient(e, token) && attempt < 4) { await Backoff(attempt, token); }
+            try { return await operation(attempt + 1); }
+            catch (Exception e) when (Transient(e, token) && attempt < 4)
+            {
+                var delay = TimeSpan.FromMilliseconds((1 << attempt) * 1000 + Random.Shared.Next(250));
+                progress?.Report(new(direction, TransferPhase.RetryWait, 0, total, attempt + 1, 5, delay));
+                await Task.Delay(delay, token);
+            }
         }
     }
+    private static Task<T> Retry<T>(Func<Task<T>> operation, CancellationToken token) =>
+        Retry(_ => operation(), TransferDirection.Download, 0, null, token);
     public void Dispose() => client.Dispose();
 }

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Security.Cryptography;
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -51,6 +52,19 @@ public sealed class R2AdapterTests
         Assert.StartsWith("diagnostics/", transport.LastKey);
         Assert.True(transport.Deleted);
     }
+    [Fact]
+    public async Task DownloadReportsBytesAndVerification()
+    {
+        using var transport = new FakeS3(); transport.Seed("world-data");
+        using var repository = new R2WorldRepository(transport, "bucket", "world", () => DateTimeOffset.UtcNow);
+        var bytes = Encoding.UTF8.GetBytes("world-data");
+        var version = LeaseTests.Version("progress") with { Size = bytes.Length, Sha256 = Convert.ToHexString(SHA256.HashData(bytes)) };
+        var destination = Path.GetTempFileName(); var events = new List<TransferProgress>();
+        try { await repository.DownloadAsync(version, destination, progress: new CaptureProgress(events)); }
+        finally { File.Delete(destination); }
+        Assert.Contains(events, p => p.Phase == TransferPhase.Transferring && p.BytesTransferred == bytes.Length);
+        Assert.Contains(events, p => p.Phase == TransferPhase.Verifying);
+    }
     private sealed class FakeS3() : AmazonS3Client(new BasicAWSCredentials("test", "test"),
         new AmazonS3Config { ServiceURL = "https://s3.us-east-1.amazonaws.com" })
     {
@@ -64,6 +78,7 @@ public sealed class R2AdapterTests
         public bool CompatibleSigning { get; private set; }
         public string LastKey { get; private set; } = "";
         public bool Deleted { get; private set; }
+        public void Seed(string value) { body = value; etag = "seed"; }
         public override Task<PutObjectResponse> PutObjectAsync(PutObjectRequest request, CancellationToken cancellationToken = default)
         {
             Writes++;
@@ -89,4 +104,6 @@ public sealed class R2AdapterTests
             return Task.FromResult(new GetObjectResponse { ETag = etag, ResponseStream = new MemoryStream(bytes), ContentLength = bytes.Length });
         }
     }
+    private sealed class CaptureProgress(List<TransferProgress> events) : IProgress<TransferProgress>
+    { public void Report(TransferProgress value) => events.Add(value); }
 }

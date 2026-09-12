@@ -18,6 +18,7 @@ public sealed class SyncEngine
     public bool IsBusy { get; private set; }
     public SyncStatus Status { get; private set; } = new(SyncState.Idle, "Pronto para verificar o mundo.");
     public event Action<SyncStatus>? StatusChanged;
+    public event Action<TransferProgress>? TransferProgressChanged;
     public SyncEngine(IWorldRepository repository, IWorldArchive archive, ISessionJournal journal, IGameSession game, SyncOptions options, TimeProvider? time = null)
     {
         this.repository = repository; this.archive = archive; this.journal = journal; this.game = game; this.options = options;
@@ -47,7 +48,7 @@ public sealed class SyncEngine
             var downloadRoot = Path.Combine(options.DataRoot, "downloads");
             Directory.CreateDirectory(downloadRoot);
             var download = Path.Combine(downloadRoot, sessionId + ".zip");
-            await repository.DownloadAsync(manifest.Current, download, token);
+            await repository.DownloadAsync(manifest.Current, download, token, new CallbackProgress<TransferProgress>(p => TransferProgressChanged?.Invoke(p)));
             Set(SyncState.Preparing, "Validando e instalando o save; cópia anterior será preservada…");
             await archive.InstallAsync(manifest.Current, download, options.WorldPath, () => game.IsRunning, token);
             await lease.RenewAsync(sessionId, token); // Do not launch after losing ownership during download.
@@ -199,7 +200,7 @@ public sealed class SyncEngine
             throw new WorldConflictException();
         }
         Set(SyncState.Uploading, "Enviando o snapshot. O progresso já está salvo localmente…");
-        await repository.UploadAsync(snapshot.Version, snapshot.Path, token);
+        await repository.UploadAsync(snapshot.Version, snapshot.Path, token, new CallbackProgress<TransferProgress>(p => TransferProgressChanged?.Invoke(p)));
         await EnsureLocalMatchesSnapshot(snapshot, token);
         await lease.RenewAsync(session.SessionId, token);
         Set(SyncState.Publishing, "Publicando a nova versão por CAS…");
@@ -327,4 +328,6 @@ public sealed class SyncEngine
         Status = new(state, message);
         StatusChanged?.Invoke(Status);
     }
+    private sealed class CallbackProgress<T>(Action<T> callback) : IProgress<T>
+    { public void Report(T value) => callback(value); }
 }

@@ -17,3 +17,7 @@ public sealed record SessionRecord
 }
 public enum SyncState { Idle, Checking, Acquiring, Downloading, Preparing, Launching, Playing, LocalBackup, Uploading, Publishing, Releasing, InUse, Offline, Pending, Conflict, Error }
 public sealed record SyncStatus(SyncState State, string Message);
+public enum TransferDirection { Upload, Download }
+public enum TransferPhase { Starting, Transferring, Verifying, RetryWait, Completed }
+public sealed record TransferProgress(TransferDirection Direction, TransferPhase Phase, long BytesTransferred,
+    long TotalBytes, int Attempt, int MaxAttempts, TimeSpan? RetryDelay = null);

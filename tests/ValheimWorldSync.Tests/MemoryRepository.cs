@@ -26,13 +26,13 @@ internal sealed class MemoryRepository : IWorldRepository
             return Task.FromResult<ManifestSnapshot?>(current);
         }
     }
-    public async Task UploadAsync(WorldVersion version, string archivePath, CancellationToken cancellationToken = default)
+    public async Task UploadAsync(WorldVersion version, string archivePath, CancellationToken cancellationToken = default, IProgress<TransferProgress>? progress = null)
     {
         if (BeforeUpload is not null) await BeforeUpload();
         if (FailUpload) throw new IOException("offline");
         Objects[version.Key] = await File.ReadAllBytesAsync(archivePath, cancellationToken);
     }
-    public Task DownloadAsync(WorldVersion version, string destination, CancellationToken cancellationToken = default) =>
+    public Task DownloadAsync(WorldVersion version, string destination, CancellationToken cancellationToken = default, IProgress<TransferProgress>? progress = null) =>
         File.WriteAllBytesAsync(destination, Objects[version.Key], cancellationToken);
     public Task DeleteAsync(string key, CancellationToken cancellationToken = default)
     {
