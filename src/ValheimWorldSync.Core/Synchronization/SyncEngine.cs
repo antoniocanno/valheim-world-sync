@@ -179,10 +179,14 @@ public sealed class SyncEngine
     }
     private async Task Finish(SessionRecord session, CancellationToken token)
     {
+        var cleanupPending = false;
+        try { await new BackupRetention(repository, lease).PruneAsync(session.SessionId, options.BackupCount, token); }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+        catch (Exception) { cleanupPending = true; }
         Set(SyncState.Releasing, "Concluindo a sincronização…");
         await lease.ReleaseAsync(session.SessionId, token);
         await journal.ClearAsync(token);
-        Set(SyncState.Idle, "Sincronizado. Mundo disponível para o próximo anfitrião.");
+        Set(SyncState.Idle, cleanupPending ? "Mundo sincronizado. A limpeza de backups será retomada na próxima sincronização." : "Sincronizado. Mundo disponível para o próximo anfitrião.");
     }
     private async Task RefreshCore(CancellationToken token)
     {
