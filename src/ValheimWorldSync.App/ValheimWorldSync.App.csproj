@@ -7,5 +7,8 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>ValheimWorldSync</AssemblyName>
   </PropertyGroup>
-  <ItemGroup><ProjectReference Include="../ValheimWorldSync.Infrastructure/ValheimWorldSync.Infrastructure.csproj" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../ValheimWorldSync.Infrastructure/ValheimWorldSync.Infrastructure.csproj" />
+    <ProjectReference Include="../ValheimWorldSync.Platform.Windows/ValheimWorldSync.Platform.Windows.csproj" />
+  </ItemGroup>
 </Project>

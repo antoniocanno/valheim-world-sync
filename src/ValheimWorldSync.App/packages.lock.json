@@ -17,6 +17,12 @@
           "ValheimWorldSync.Core": "[1.0.0, )"
         }
       },
+      "valheimworldsync.platform.windows": {
+        "type": "Project",
+        "dependencies": {
+          "ValheimWorldSync.Core": "[1.0.0, )"
+        }
+      },
       "AWSSDK.S3": {
         "type": "CentralTransitive",
         "requested": "[4.0.103.1, )",

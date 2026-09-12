@@ -6,11 +6,11 @@ using System.Windows.Threading;
 using Microsoft.Win32;
 using ValheimWorldSync.Core.Models;
 using ValheimWorldSync.Core.Synchronization;
-using ValheimWorldSync.Desktop.Game;
 using ValheimWorldSync.Infrastructure.Configuration;
 using ValheimWorldSync.Infrastructure.Recovery;
 using ValheimWorldSync.Infrastructure.Storage;
 using ValheimWorldSync.Infrastructure.WorldFiles;
+using ValheimWorldSync.Platform.Windows.Game;
 
 namespace ValheimWorldSync.Desktop.ViewModels;
 
