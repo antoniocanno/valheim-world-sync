@@ -36,6 +36,7 @@
                     <Button Content="Tentar sincronizar" Command="{Binding RetryCommand}" Margin="4"/>
                     <Button Content="Exportar progresso" Command="{Binding ExportCommand}" Margin="4"/>
                     <Button Content="Voltar à nuvem…" Command="{Binding UseCloudCommand}" Margin="4"/>
+                    <Button Content="Reinicializar remoto…" Command="{Binding ResetCommand}" Margin="4"/>
                 </UniformGrid>
             </StackPanel>
             <Grid Grid.Row="5" Margin="0,20,0,0">

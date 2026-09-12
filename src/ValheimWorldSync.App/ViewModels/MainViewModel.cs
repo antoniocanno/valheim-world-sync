@@ -58,6 +58,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public AsyncCommand ExportCommand { get; }
     public AsyncCommand UseCloudCommand { get; }
     public AsyncCommand RecoveryCommand { get; }
+    public AsyncCommand ResetCommand { get; }
 
     public MainViewModel(Dispatcher dispatcher, string? dataRoot = null)
     {
@@ -75,6 +76,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         ExportCommand = Command(ExportAsync, () => configuration is not null && !IsWorking);
         UseCloudCommand = Command(UseCloudAsync, () => engine is not null && !IsWorking && State is SyncState.Conflict or SyncState.Pending or SyncState.Error);
         RecoveryCommand = Command(OpenRecoveryAsync, () => profile is not null && !IsWorking);
+        ResetCommand = Command(ResetRemoteAsync, () => profile is not null && engine is not null && !IsWorking);
         timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
         timer.Tick += OnTimer;
     }
@@ -251,6 +253,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         if (profile is null) return Task.CompletedTask;
         new RecoveryWindow(profile, dataRoot) { Owner = Application.Current.MainWindow }.ShowDialog();
         return Task.CompletedTask;
+    }
+    private async Task ResetRemoteAsync()
+    {
+        if (profile is null || engine is null) return;
+        if (new WindowsGamePlatform().FindProcesses().Count != 0) throw new IOException("Feche o Valheim antes de reinicializar o mundo.");
+        var source = new OpenFolderDialog { Title = "Escolha a pasta completa que substituirá o mundo remoto" };
+        if (source.ShowDialog() != true) return;
+        if (new ConfirmResetWindow(profile.Connection.WorldDisplayName) { Owner = Application.Current.MainWindow }.ShowDialog() != true) return;
+        await RunEngine(() => engine.ResetRemoteAsync(source.FolderName, lifetime.Token));
     }
     private static string FormatBytes(long bytes) => bytes >= 1024 * 1024 ? $"{bytes / 1024d / 1024d:0.0} MiB" : $"{bytes / 1024d:0.0} KiB";
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));

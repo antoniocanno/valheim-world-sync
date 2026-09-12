@@ -202,6 +202,22 @@ public sealed class EngineTests : IDisposable
         Assert.Equal("external progress", await File.ReadAllTextAsync(Path.Combine(world, "chunk")));
         Assert.True(File.Exists((await journal.ReadAsync())!.Snapshot!.Path));
     }
+    [Fact]
+    public async Task RemoteResetPreservesPreviousVersionAndPublishesNewSource()
+    {
+        await engine.ImportAsync(world);
+        var previous = (await repo.ReadAsync())!.Manifest.Current!;
+        var replacement = Path.Combine(root, "replacement"); Directory.CreateDirectory(replacement);
+        await File.WriteAllTextAsync(Path.Combine(replacement, "chunk"), "replacement");
+
+        await engine.ResetRemoteAsync(replacement);
+
+        var manifest = (await repo.ReadAsync())!.Manifest;
+        Assert.NotEqual(previous.Id, manifest.Current!.Id);
+        Assert.Contains(manifest.History, version => version.Id == previous.Id);
+        Assert.Null(manifest.Lease);
+        Assert.True(Directory.GetFiles(Path.Combine(root, "app", "recovery"), "*.json").Length >= 2);
+    }
 
     public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
     private sealed class TestGame : IGameSession

@@ -141,6 +141,36 @@ public sealed class SyncEngine
 
     public Task RefreshAsync(CancellationToken token = default) => Guard(() => RefreshCore(token), token);
 
+    public Task ResetRemoteAsync(string sourceWorldPath, CancellationToken token = default) => Guard(async () =>
+    {
+        EnsureGameClosed();
+        if (await journal.ReadAsync(token) is not null) throw new InvalidDataException("Resolva a sessão pendente antes de reinicializar o mundo.");
+        var sessionId = Guid.NewGuid().ToString("N");
+        var manifest = await UpgradeManifestAsync(sessionId, await lease.AcquireAsync(sessionId, token), token);
+        try
+        {
+            await WithHeartbeat(sessionId, async () =>
+            {
+                if (manifest.Current is { } current)
+                {
+                    var downloads = Path.Combine(options.DataRoot, "downloads"); Directory.CreateDirectory(downloads);
+                    var oldPath = Path.Combine(downloads, "reset-" + current.Id + ".zip");
+                    await repository.DownloadAsync(current, oldPath, token, new CallbackProgress<TransferProgress>(p => TransferProgressChanged?.Invoke(p)));
+                    await archive.PreserveAsync(new(oldPath, current), current.CreatedBy ?? "desconhecido", "remoto-antes-de-reiniciar", token);
+                }
+                var snapshot = await archive.CreateAsync(Path.GetFullPath(sourceWorldPath), token);
+                snapshot = snapshot with { Version = snapshot.Version with { CreatedBy = options.Player } };
+                await archive.PreserveAsync(snapshot, options.Player, "fonte-da-reinicializacao", token);
+                await repository.UploadAsync(snapshot.Version, snapshot.Path, token, new CallbackProgress<TransferProgress>(p => TransferProgressChanged?.Invoke(p)));
+                await lease.RenewAsync(sessionId, token);
+                await lease.PublishAsync(sessionId, manifest.Current?.Id, snapshot.Version, token);
+                await new BackupRetention(repository, lease).PruneAsync(sessionId, options.BackupCount, token);
+            }, token);
+            Set(SyncState.Idle, "Mundo remoto reinicializado; a versão anterior foi preservada.");
+        }
+        finally { try { await lease.ReleaseAsync(sessionId, CancellationToken.None); } catch { } }
+    }, token);
+
     // Called only after the UI explicitly confirms keeping a recovery snapshot and abandoning automatic publication.
     public Task KeepLocalAndUseCloudAsync(CancellationToken token = default) => Guard(async () =>
     {

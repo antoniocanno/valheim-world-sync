@@ -196,7 +196,12 @@ public sealed class WorldArchive(string dataRoot, string? recoveryDirectory = nu
     }
     public async Task<RecoveryEntry> PreserveAsync(LocalSnapshot snapshot, string player, string origin, CancellationToken token = default)
     {
-        await VerifyAsync(snapshot, token);
+        var source = Path.GetFullPath(snapshot.Path);
+        if (!source.StartsWith(root + Path.DirectorySeparatorChar, PathComparison))
+            throw new InvalidDataException("Arquivo fora da área de recuperação do perfil.");
+        await using (var file = File.OpenRead(source))
+            if (file.Length != snapshot.Version.Size || Convert.ToHexString(await SHA256.HashDataAsync(file, token)) != snapshot.Version.Sha256)
+                throw new InvalidDataException("Cópia local alterada ou incompleta.");
         Directory.CreateDirectory(recoveryRoot);
         var destination = Path.Combine(recoveryRoot, $"{snapshot.Version.CreatedAt:yyyyMMddTHHmmssfffZ}-{snapshot.Version.Id}.zip");
         if (!string.Equals(Path.GetFullPath(snapshot.Path), Path.GetFullPath(destination), PathComparison))
