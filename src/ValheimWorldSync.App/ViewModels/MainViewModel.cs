@@ -77,11 +77,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             configuration = await AppConfiguration.LoadAsync(configPath, createTemplate: true);
             WorldLabel = string.IsNullOrWhiteSpace(configuration.WorldFolderName) ? "NENHUM MUNDO CONFIGURADO" : configuration.WorldFolderName;
             configuration.Validate();
+            var installation = await InstallationIdentity.LoadOrCreateAsync(dataRoot, lifetime.Token);
             repository = new(configuration);
             var game = new PollingGameSession(new WindowsGamePlatform());
             engine = new(repository, new WorldArchive(dataRoot), new FileSessionJournal(dataRoot), game,
                 new(configuration.WorldId, configuration.WorldPath, configuration.Endpoint.TrimEnd('/') + "/" + configuration.Bucket,
-                    dataRoot, configuration.Player, configuration.InstallationId, configuration.BackupCount));
+                    dataRoot, configuration.Player, installation.Id, configuration.BackupCount));
             engine.StatusChanged += OnStatus;
         }
         catch (Exception e) { Error(e); }
@@ -141,18 +142,23 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
     private async Task ImportAsync()
     {
+        configuration = await AppConfiguration.LoadAsync(configPath, createTemplate: true);
+        configuration.ValidateRemote();
         var dialog = new OpenFolderDialog { Title = "Escolha a pasta completa de um mundo local do Valheim 1.0" };
         if (dialog.ShowDialog() != true) return;
         if (File.Exists(Path.Combine(dataRoot, "session.json"))) throw new InvalidDataException("Resolva a sessão pendente antes de alterar o mundo.");
         var folder = new DirectoryInfo(dialog.FolderName);
-        if (MessageBox.Show($"Publicar a pasta '{folder.Name}' como primeiro mundo do bucket?\n\nO Valheim deve estar fechado. Mundos antigos precisam ser convertidos no jogo antes da importação.",
+        if (string.IsNullOrWhiteSpace(configuration.WorldFolderName))
+        {
+            configuration = configuration with { WorldFolderName = folder.Name };
+            configuration.Validate();
+            await DurableJson.WriteAsync(configPath, configuration);
+        }
+        var destination = configuration.WorldPath;
+        if (MessageBox.Show($"Copiar '{folder.FullName}' para a pasta usada pelo jogo e publicar como primeiro mundo?\n\nDestino local: {destination}\n\nA origem será preservada. Se o destino existir, ele será guardado como backup. O Valheim deve estar fechado.",
             "Importar mundo", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-        configuration = await AppConfiguration.LoadAsync(configPath, createTemplate: true);
-        configuration = configuration with { SavesRoot = folder.Parent!.FullName, WorldFolderName = folder.Name };
-        configuration.Validate();
-        await DurableJson.WriteAsync(configPath, configuration);
         await InitializeAsync();
-        if (engine is not null) await RunEngine(() => engine.ImportAsync(lifetime.Token));
+        if (engine is not null) await RunEngine(() => engine.ImportAsync(folder.FullName, lifetime.Token));
     }
     private async Task ExportAsync()
     {

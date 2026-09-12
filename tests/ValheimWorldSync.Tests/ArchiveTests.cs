@@ -69,5 +69,39 @@ public sealed class ArchiveTests : IDisposable
         var archive = new WorldArchive(Path.Combine(root, "app"));
         await Assert.ThrowsAsync<IOException>(() => archive.InstallAsync(LeaseTests.Version("one"), "absent", Path.Combine(root,"world"), () => true));
     }
+    [Fact]
+    public async Task RejectsDataDirectoryNestedInsideWorld()
+    {
+        var world = Path.Combine(root, "world");
+        Directory.CreateDirectory(world);
+        await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "data");
+        var archive = new WorldArchive(Path.Combine(world, ".app-data"));
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => archive.CreateAsync(world));
+        Assert.Contains("dentro da pasta do mundo", error.Message);
+    }
+    [Fact]
+    public async Task RecoveryPromotesStagingWhenNoPreviousWorldExists()
+    {
+        var app = Path.Combine(root, "app");
+        var target = Path.Combine(root, "world");
+        var backup = Path.Combine(root, ".vws-backup-" + Guid.NewGuid().ToString("N"));
+        var stage = Path.Combine(root, ".vws-staging-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(stage);
+        await File.WriteAllTextAsync(Path.Combine(stage, "saved"), "staged");
+        await DurableJson.WriteAsync(Path.Combine(app, "install.json"), new WorldArchive.InstallRecord(target, stage, backup));
+        await new WorldArchive(app).RecoverInstallAsync(target, () => false);
+        Assert.Equal("staged", await File.ReadAllTextAsync(Path.Combine(target, "saved")));
+    }
+    [Fact]
+    public async Task RecoveryFailsClosedWhenAllInstallDirectoriesAreMissing()
+    {
+        var app = Path.Combine(root, "app");
+        var target = Path.Combine(root, "world");
+        var backup = Path.Combine(root, ".vws-backup-" + Guid.NewGuid().ToString("N"));
+        var stage = Path.Combine(root, ".vws-staging-" + Guid.NewGuid().ToString("N"));
+        await DurableJson.WriteAsync(Path.Combine(app, "install.json"), new WorldArchive.InstallRecord(target, stage, backup));
+        await Assert.ThrowsAsync<IOException>(() => new WorldArchive(app).RecoverInstallAsync(target, () => false));
+        Assert.True(File.Exists(Path.Combine(app, "install.json")));
+    }
     public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
 }

@@ -13,24 +13,27 @@ public sealed record AppConfiguration
     public string SavesRoot { get; init; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         "AppData", "LocalLow", "IronGate", "Valheim", "worlds_local");
     public int BackupCount { get; init; } = 10;
-    public string InstallationId { get; init; } = Guid.NewGuid().ToString("N");
     [System.Text.Json.Serialization.JsonIgnore]
     public string WorldPath => Path.Combine(SavesRoot, WorldFolderName);
     public static string DataRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ValheimWorldSync");
     public static string DefaultPath => Path.Combine(DataRoot, "config.json");
-    public void Validate()
+    public void ValidateRemote()
     {
         if (!Uri.TryCreate(Endpoint, UriKind.Absolute, out var uri) || uri.Scheme != "https" ||
             !uri.Host.EndsWith(".r2.cloudflarestorage.com", StringComparison.OrdinalIgnoreCase) ||
             !string.IsNullOrEmpty(uri.UserInfo) || uri.AbsolutePath != "/" || !string.IsNullOrEmpty(uri.Query))
             throw new InvalidDataException("Endpoint deve ser a URL HTTPS S3 do Cloudflare R2.");
-        if (new[] { Bucket, AccessKeyId, SecretAccessKey, Player, WorldId, InstallationId }.Any(string.IsNullOrWhiteSpace))
+        if (new[] { Bucket, AccessKeyId, SecretAccessKey, Player, WorldId }.Any(string.IsNullOrWhiteSpace))
             throw new InvalidDataException("Preencha bucket, credenciais, jogador e WorldId em config.json.");
+        if (BackupCount is < 0 or > 1000) throw new InvalidDataException("BackupCount deve estar entre 0 e 1000.");
+    }
+    public void Validate()
+    {
+        ValidateRemote();
         if (string.IsNullOrWhiteSpace(WorldFolderName) || WorldFolderName is "." or ".." ||
             WorldFolderName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
             WorldFolderName.Contains('/') || WorldFolderName.Contains('\\') || !Path.IsPathFullyQualified(SavesRoot))
             throw new InvalidDataException("Configure uma raiz absoluta e um nome simples de pasta de mundo.");
-        if (BackupCount is < 0 or > 1000) throw new InvalidDataException("BackupCount deve estar entre 0 e 1000.");
     }
     public static async Task<AppConfiguration> LoadAsync(string path, bool createTemplate = false)
     {

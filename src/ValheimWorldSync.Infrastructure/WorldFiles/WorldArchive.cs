@@ -11,6 +11,7 @@ public sealed class WorldArchive(string dataRoot) : IWorldArchive
 {
     public const long MaxZipBytes = 4L * 1024 * 1024 * 1024;
     public const long MaxExpandedBytes = 32L * 1024 * 1024 * 1024;
+    public const int MaxEntries = 500_000;
     private readonly string root = Path.GetFullPath(dataRoot);
     private string InstallJournal => Path.Combine(root, "install.json");
     public sealed record InstallRecord(string Target, string Staging, string Backup);
@@ -21,20 +22,23 @@ public sealed class WorldArchive(string dataRoot) : IWorldArchive
     {
         worldPath = Path.GetFullPath(worldPath);
         if (!Directory.Exists(worldPath)) throw new DirectoryNotFoundException("Pasta do mundo não encontrada. Importe uma pasta de mundo 1.0.");
+        EnsureDataRootOutsideWorld(worldPath);
         RejectReparseAncestors(worldPath);
         var snapshots = Path.Combine(root, "snapshots");
         Directory.CreateDirectory(snapshots);
         var id = Guid.NewGuid().ToString("N");
         var path = Path.Combine(snapshots, id + ".zip");
         var temporary = path + ".tmp";
-        var before = await InventoryAsync(worldPath, token);
+        var sourceEntries = EnumerateSafe(worldPath).Take(MaxEntries + 1).ToArray();
+        if (sourceEntries.Length > MaxEntries) throw new InvalidDataException($"Mundo excede o limite de {MaxEntries:N0} entradas.");
+        var before = await InventoryAsync(worldPath, sourceEntries, token);
         if (before.Count == 0) throw new InvalidDataException("A pasta do mundo está vazia.");
         long total = 0;
         await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
         {
             using (var zip = new ZipArchive(output, ZipArchiveMode.Create, true))
             {
-                foreach (var directory in EnumerateSafe(worldPath).Where(Directory.Exists))
+                foreach (var directory in sourceEntries.Where(Directory.Exists))
                     zip.CreateEntry(Path.GetRelativePath(worldPath, directory).Replace('\\', '/') + "/");
                 foreach (var file in before)
                 {
@@ -74,6 +78,15 @@ public sealed class WorldArchive(string dataRoot) : IWorldArchive
         return new(path, version);
     }
 
+    public async Task<string> GetTreeHashAsync(string worldPath, CancellationToken token = default)
+    {
+        worldPath = Path.GetFullPath(worldPath);
+        if (!Directory.Exists(worldPath)) throw new DirectoryNotFoundException("Pasta do mundo não encontrada.");
+        EnsureDataRootOutsideWorld(worldPath);
+        RejectReparseAncestors(worldPath);
+        return TreeHash(await InventoryAsync(worldPath, token));
+    }
+
     public async Task VerifyAsync(LocalSnapshot snapshot, CancellationToken token = default)
     {
         var path = Path.GetFullPath(snapshot.Path);
@@ -106,7 +119,7 @@ public sealed class WorldArchive(string dataRoot) : IWorldArchive
         {
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             long expanded = 0;
-            if (zip.Entries.Count > 500_000) throw new InvalidDataException("ZIP com entradas demais.");
+            if (zip.Entries.Count > MaxEntries) throw new InvalidDataException($"ZIP excede o limite de {MaxEntries:N0} entradas.");
             foreach (var entry in zip.Entries)
             {
                 token.ThrowIfCancellationRequested();
@@ -210,8 +223,14 @@ public sealed class WorldArchive(string dataRoot) : IWorldArchive
     }
     private static async Task<List<FileDigest>> InventoryAsync(string directory, CancellationToken token)
     {
+        var entries = EnumerateSafe(directory).Take(MaxEntries + 1).ToArray();
+        if (entries.Length > MaxEntries) throw new InvalidDataException($"Mundo excede o limite de {MaxEntries:N0} entradas.");
+        return await InventoryAsync(directory, entries, token);
+    }
+    private static async Task<List<FileDigest>> InventoryAsync(string directory, IEnumerable<string> entries, CancellationToken token)
+    {
         var result = new List<FileDigest>();
-        foreach (var file in EnumerateSafe(directory).Where(File.Exists))
+        foreach (var file in entries.Where(File.Exists))
         {
             token.ThrowIfCancellationRequested();
             var name = Path.GetRelativePath(directory, file).Replace('\\', '/');
@@ -220,6 +239,12 @@ public sealed class WorldArchive(string dataRoot) : IWorldArchive
             result.Add(new(name, stream.Length, Convert.ToHexString(await SHA256.HashDataAsync(stream, token))));
         }
         return result;
+    }
+    private void EnsureDataRootOutsideWorld(string worldPath)
+    {
+        var worldPrefix = worldPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        if (string.Equals(root, worldPath, PathComparison) || root.StartsWith(worldPrefix, PathComparison))
+            throw new InvalidDataException("A pasta de dados do aplicativo não pode ficar dentro da pasta do mundo.");
     }
     private static string TreeHash(IEnumerable<FileDigest> files) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
         string.Join("\n", files.OrderBy(f => f.Name, StringComparer.Ordinal).Select(f => $"{f.Name}\0{f.Size}\0{f.Hash}")))));

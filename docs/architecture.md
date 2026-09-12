@@ -18,6 +18,7 @@ real antes de usar em produção. Personagens, mods e servidor dedicado fora do 
 Configuração local fora do executável/Git. Diário local antes de operações destrutivas,
 staging e backup antes de instalar save, snapshot durável antes de publicar. Não garantir
 transação entre renomeações de diretório; recuperar pelo diário antes de abrir o jogo.
+Cada PC cria sua identidade em `installation.json`, separada da configuração compartilhável.
 
 Retenção: vigente + 10 anteriores por padrão; exclusões registradas antes da remoção.
 Objetos abandonados não são varridos automaticamente. Bucket exclusivo para cada mundo.

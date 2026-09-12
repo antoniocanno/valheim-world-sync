@@ -12,12 +12,13 @@
 
 ## Gates externos ainda pendentes
 
-1. **R2 real:** executar Diagnostics e IntegrationTests em bucket de testes; comprovar
-   exatamente um vencedor na disputa e rejeição de ETag antigo. Confirmar horário do
-   serviço, assinatura/checksums, upload/download de um ZIP grande e acesso negado.
-2. **Formato do jogo:** criar um mundo descartável na versão atual, salvar localmente,
-   fechar, importar sua pasta completa, baixar em outra pasta/perfil e abrir no jogo.
-   Validar que nenhum arquivo necessário fica fora da pasta selecionada.
+1. **R2 real:** CAS, ETag antigo, horário remoto e round-trip idempotente de 2 MiB foram
+   validados em 12/09/2026 sob prefixo isolado no bucket configurado. Credenciais
+   inválidas também foram rejeitadas sem escrita. Ainda validar transferência
+   lenta/grande sob falhas de rede.
+2. **Formato do jogo:** a pasta configurada (14 arquivos do formato 1.0) passou por
+   snapshot/restauração estrutural sem alterar a origem. Ainda abrir a cópia restaurada
+   no jogo e confirmar que nenhum arquivo necessário fica fora da pasta selecionada.
 3. **Dois jogadores Steam:** A hospeda e B entra pela Steam; B não publica. A fecha,
    sincroniza, e B abre como novo anfitrião com as mesmas construções/progresso.
 4. **Falhas reais:** interromper rede durante transferência, matar somente o app com

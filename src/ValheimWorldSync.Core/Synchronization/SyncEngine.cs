@@ -63,9 +63,15 @@ public sealed class SyncEngine
         }, token);
     }, token);
 
-    public Task ImportAsync(CancellationToken token = default) => Guard(async () =>
+    public Task ImportAsync(string sourceWorldPath, CancellationToken token = default) => Guard(async () =>
     {
         EnsureGameClosed();
+        sourceWorldPath = Path.GetFullPath(sourceWorldPath);
+        var destinationWorldPath = Path.GetFullPath(options.WorldPath);
+        if (!string.Equals(sourceWorldPath.TrimEnd(Path.DirectorySeparatorChar),
+                destinationWorldPath.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase) &&
+            (IsAncestorOf(sourceWorldPath, destinationWorldPath) || IsAncestorOf(destinationWorldPath, sourceWorldPath)))
+            throw new InvalidDataException("Selecione a pasta de um único mundo; origem e destino não podem conter uma à outra.");
         if (await journal.ReadAsync(token) is not null) throw new InvalidDataException("Resolva a sessão pendente antes de importar.");
         await archive.RecoverInstallAsync(options.WorldPath, () => game.IsRunning, token);
         var sessionId = Guid.NewGuid().ToString("N");
@@ -76,9 +82,21 @@ public sealed class SyncEngine
             await lease.ReleaseAsync(sessionId, token);
             throw new InvalidDataException("O bucket já contém um mundo. A importação inicial não o substitui.");
         }
-        var session = NewSession(sessionId, null, true) with { Stage = SessionStage.SnapshotPending };
+        var session = NewSession(sessionId, null, true);
         await journal.WriteAsync(session, token);
-        await WithHeartbeat(sessionId, () => CaptureAndPublish(session, token), token);
+        await WithHeartbeat(sessionId, async () =>
+        {
+            Set(SyncState.LocalBackup, "Copiando a origem para a pasta local usada pelo Valheim…");
+            var snapshot = await archive.CreateAsync(sourceWorldPath, token);
+            if (!string.Equals(sourceWorldPath.TrimEnd(Path.DirectorySeparatorChar),
+                    Path.GetFullPath(options.WorldPath).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+            {
+                await archive.InstallAsync(snapshot.Version, snapshot.Path, options.WorldPath, () => game.IsRunning, token);
+            }
+            session = session with { Stage = SessionStage.Ready, Snapshot = snapshot };
+            await journal.WriteAsync(session, token);
+            await PublishPending(session, token);
+        }, token);
     }, token);
 
     public Task RecoverAsync(CancellationToken token = default) => Guard(async () =>
@@ -94,6 +112,8 @@ public sealed class SyncEngine
         if (session.Stage == SessionStage.Conflict) { Set(SyncState.Conflict, "Há progresso local divergente. Exporte antes de voltar à versão da nuvem."); return; }
         if (session.Stage == SessionStage.Launching)
             throw new WorldConflictException(); // A crash may have occurred between launch and saving the PID.
+        if (session.Stage == SessionStage.SnapshotPending)
+            throw new WorldConflictException(); // We cannot prove another game did not write after capture was interrupted.
         if (session.Stage == SessionStage.Preparing)
         {
             EnsureGameClosed();
@@ -137,12 +157,12 @@ public sealed class SyncEngine
 
     private async Task CaptureAndPublish(SessionRecord session, CancellationToken token)
     {
-        EnsureGameClosed();
+        EnsureSafeToCapture();
         session = session with { Stage = SessionStage.SnapshotPending };
         await journal.WriteAsync(session, token);
         Set(SyncState.LocalBackup, "Guardando uma cópia completa do progresso local…");
         var snapshot = await archive.CreateAsync(options.WorldPath, token);
-        EnsureGameClosed();
+        EnsureSafeToCapture();
         session = session with { Stage = SessionStage.Ready, Snapshot = snapshot };
         await journal.WriteAsync(session, token);
         await PublishPending(session, token);
@@ -152,6 +172,7 @@ public sealed class SyncEngine
         EnsureGameClosed();
         var snapshot = session.Snapshot ?? throw new InvalidDataException("Snapshot pendente ausente.");
         await archive.VerifyAsync(snapshot, token);
+        await EnsureLocalMatchesSnapshot(snapshot, token);
         Set(SyncState.Acquiring, "Confirmando posse e versão-base para publicar…");
         var manifest = await lease.AcquireAsync(session.SessionId, token);
         if (manifest.Current?.Id == snapshot.Version.Id)
@@ -172,6 +193,7 @@ public sealed class SyncEngine
         }
         Set(SyncState.Uploading, "Enviando o snapshot. O progresso já está salvo localmente…");
         await repository.UploadAsync(snapshot.Version, snapshot.Path, token);
+        await EnsureLocalMatchesSnapshot(snapshot, token);
         await lease.RenewAsync(session.SessionId, token);
         Set(SyncState.Publishing, "Publicando a nova versão por CAS…");
         await lease.PublishAsync(session.SessionId, session.BaseVersion?.Id, snapshot.Version, token);
@@ -214,6 +236,20 @@ public sealed class SyncEngine
     }
     private void EnsureGameClosed()
     { if (game.IsRunning) throw new IOException("Feche o Valheim antes de sincronizar arquivos locais."); }
+    private void EnsureSafeToCapture()
+    { if (game.IsRunning) throw new WorldConflictException(); }
+    private async Task EnsureLocalMatchesSnapshot(LocalSnapshot snapshot, CancellationToken token)
+    {
+        EnsureSafeToCapture();
+        if (await archive.GetTreeHashAsync(options.WorldPath, token) != snapshot.Version.TreeHash)
+            throw new WorldConflictException();
+        EnsureSafeToCapture();
+    }
+    private static bool IsAncestorOf(string possibleAncestor, string path)
+    {
+        var prefix = possibleAncestor.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+    }
     private async Task WithHeartbeat(string sessionId, Func<Task> action, CancellationToken token)
     {
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(token);

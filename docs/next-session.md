@@ -1,11 +1,5 @@
 # Contexto para a próxima sessão
 
-## Pedido de parada
-
-O usuário pediu para continuar somente até o próximo commit e parar para trocar de modelo.
-Este documento acompanha esse commit. Não há autorização implícita para retomar trabalho
-em segundo plano após a parada; aguarde a solicitação na nova sessão.
-
 ## Decisões confirmadas
 
 - Windows x64, .NET 10, WPF com janela mínima + bandeja WinForms.
@@ -17,7 +11,8 @@ em segundo plano após a parada; aguarde a solicitação na nova sessão.
 - Após perda da posse, preservar progresso e só publicar após readquisição com base
   remota inalterada; conflito é recuperação manual.
 - Importação inicial explícita. Retenção padrão: vigente + 10 anteriores.
-- O usuário confirmou que **ainda não possui bucket R2 de testes configurado**.
+- O usuário configurou um arquivo real do R2 em `%LOCALAPPDATA%\ValheimWorldSync\config.json`.
+  Nunca imprimir suas credenciais nem usar o manifesto principal para testes destrutivos.
 
 ## Implementado
 
@@ -28,13 +23,16 @@ Steam/process polling por PID e horário; WPF/bandeja/configuração/exportaçã
 retenção com fila persistente de exclusões; logs sem segredos; publicação single-file,
 scripts locais, workflow de CI e README operacional.
 
-Histórico em commits lógicos, começando em `0c58c0f`. O commit que inclui este documento
-fecha distribuição e verificação de release. Não foi feito push.
+Histórico em commits lógicos, começando em `0c58c0f`. Não foi feito push.
 
 ## Evidência no ponto de parada
 
-- `scripts/verify.ps1`: restore com lockfiles, build Release **sem avisos/erros**,
-  **31 testes passaram e 1 foi skipped** (CAS em R2 real), renderização WPF de três estados.
+- A suíte contém 43 testes: sem `VWS_R2_TEST_CONFIG`, 40 passam e as três integrações
+  R2 ficam skipped.
+- Com o arquivo real configurado, os testes isolados de CAS/ETag, relógio remoto,
+  autenticação negada, upload idempotente e round-trip de 2 MiB foram executados.
+- A pasta real configurada, com 14 arquivos do formato 1.0, passou por snapshot,
+  restauração e comparação estrutural sem alteração da origem.
 - `scripts/publish.ps1`: um único `artifacts/publish/win-x64/ValheimWorldSync.exe`,
   175.404.969 bytes (aproximadamente 167 MiB).
 - O EXE publicado passou no modo isolado `--smoke-test <diretorio>`: .NET 10.0.12, x64,
@@ -55,21 +53,18 @@ fecha distribuição e verificação de release. Não foi feito push.
 Antes de considerar a v1 pronta para um mundo principal, revisar os limites da implementação
 e expandir testes de falhas. Pontos concretos identificados para a próxima sessão:
 
-1. **Limites do snapshot:** a extração limita 500 mil entradas, mas a criação ainda
-   precisa aplicar o mesmo limite antes de publicar. Impedir também configuração em
-   que a pasta de dados/snapshots do app fique dentro da pasta do mundo (recursão).
-2. **Reabertura externa do jogo:** se outro processo do Valheim abrir entre o término
-   da sessão acompanhada e a captura do save, revisar para exigir conflito/recuperação
-   manual, em vez de eventualmente incorporar essa sessão externa à pendência original.
-3. **Validação real do save 1.0:** a pasta é tratada como conteúdo opaco. Ainda não há
-   fixture real garantindo quais arquivos/pastas são necessários. A seleção/importação
-   também precisa ser validada com o fluxo real do jogo.
+1. **Limites do snapshot:** a criação e extração agora limitam 500 mil entradas e a
+   pasta de dados/snapshots não pode ficar dentro da pasta do mundo.
+2. **Reabertura externa do jogo:** captura interrompida agora exige recuperação manual;
+   mudanças locais após o snapshot também impedem publicação.
+3. **Validação semântica do save 1.0:** a pasta é tratada como conteúdo opaco. O
+   round-trip estrutural passou, mas a cópia restaurada ainda precisa ser aberta no jogo.
 4. **Cobertura de falhas de disco/encerramento:** expandir cenários de disco cheio,
    interrupções em cada etapa do diário e suspensão/retomada. Os testes atuais cobrem
    uma interrupção entre renomeações, não todas as combinações possíveis.
-5. **R2 real:** quando o bucket existir, executar CAS e adicionar round-trip de ZIP,
-   metadados de hash, autenticação negada, horário do serviço e transferências lentas.
-   Nunca usar bucket principal para esses testes.
+5. **R2 real:** CAS, ETag antigo, relógio remoto, autenticação negada e round-trip
+   idempotente de 2 MiB passaram sob prefixo isolado; objeto temporário removido.
+   Ainda testar upload lento/grande e falhas reais de rede sem usar o manifesto principal.
 6. **Aceitação externa:** duas contas Steam, bandeja interativa, máquina sem .NET
    instalado e medição de CPU/RAM durante partida. Ver `docs/acceptance.md`.
 

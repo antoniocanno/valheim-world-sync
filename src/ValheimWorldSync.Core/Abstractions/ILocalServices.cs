@@ -4,6 +4,7 @@ namespace ValheimWorldSync.Core.Abstractions;
 public interface IWorldArchive
 {
     Task<LocalSnapshot> CreateAsync(string worldPath, CancellationToken token = default);
+    Task<string> GetTreeHashAsync(string worldPath, CancellationToken token = default);
     Task InstallAsync(WorldVersion version, string zipPath, string worldPath, Func<bool> gameIsRunning, CancellationToken token = default);
     Task RecoverInstallAsync(string worldPath, Func<bool> gameIsRunning, CancellationToken token = default);
     Task VerifyAsync(LocalSnapshot snapshot, CancellationToken token = default);

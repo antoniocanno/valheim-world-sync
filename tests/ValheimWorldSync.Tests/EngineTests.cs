@@ -28,7 +28,7 @@ public sealed class EngineTests : IDisposable
     [Fact]
     public async Task ImportPlayAndClosePublishesAutomatically()
     {
-        await engine.ImportAsync();
+        await engine.ImportAsync(world);
         var first = (await repo.ReadAsync())!.Manifest.Current!;
         game.OnExit = () => File.WriteAllTextAsync(Path.Combine(world, "chunk"), "progress");
         await engine.PlayAsync();
@@ -43,7 +43,7 @@ public sealed class EngineTests : IDisposable
     public async Task FailedUploadPersistsSnapshotAndResumePublishesSameVersion()
     {
         repo.FailUpload = true;
-        await engine.ImportAsync();
+        await engine.ImportAsync(world);
         Assert.Equal(SyncState.Pending, engine.Status.State);
         var pending = await journal.ReadAsync();
         Assert.NotNull(pending!.Snapshot);
@@ -56,7 +56,7 @@ public sealed class EngineTests : IDisposable
     [Fact]
     public async Task RemoteAdvanceDuringGamePreservesConflictWithoutOverwriting()
     {
-        await engine.ImportAsync();
+        await engine.ImportAsync(world);
         game.OnExit = async () =>
         {
             await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "local progress");
@@ -74,7 +74,7 @@ public sealed class EngineTests : IDisposable
     [Fact]
     public async Task UnchangedSessionDoesNotPublishAnotherVersion()
     {
-        await engine.ImportAsync();
+        await engine.ImportAsync(world);
         var first = (await repo.ReadAsync())!.Manifest.Current!.Id;
         await engine.PlayAsync();
         Assert.Equal(first, (await repo.ReadAsync())!.Manifest.Current!.Id);
@@ -84,7 +84,7 @@ public sealed class EngineTests : IDisposable
     public async Task ExternalGameBlocksImportAndNeverPublishes()
     {
         game.IsRunning = true;
-        await engine.ImportAsync();
+        await engine.ImportAsync(world);
         Assert.Null(await repo.ReadAsync());
         Assert.Empty(repo.Objects);
     }
@@ -103,7 +103,7 @@ public sealed class EngineTests : IDisposable
     [Fact]
     public async Task HeartbeatContinuesDuringUploadAfterGameExit()
     {
-        await engine.ImportAsync();
+        await engine.ImportAsync(world);
         var uploading = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var allowUpload = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var renewed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -124,7 +124,7 @@ public sealed class EngineTests : IDisposable
     [Fact]
     public async Task ExpiredLeaseWithSameBaseCanRecoverProgress()
     {
-        await engine.ImportAsync();
+        await engine.ImportAsync(world);
         game.OnExit = async () =>
         {
             await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "offline progress");
@@ -138,7 +138,7 @@ public sealed class EngineTests : IDisposable
     [Fact]
     public async Task CancelledSessionRetainsJournalForRecovery()
     {
-        await engine.ImportAsync();
+        await engine.ImportAsync(world);
         using var cancel = new CancellationTokenSource();
         game.OnExit = () => { cancel.Cancel(); return Task.CompletedTask; };
         await engine.PlayAsync(cancel.Token);
@@ -146,6 +146,61 @@ public sealed class EngineTests : IDisposable
         game.OnExit = null;
         await engine.RecoverAsync();
         Assert.Null(await journal.ReadAsync());
+    }
+    [Fact]
+    public async Task ImportCopiesExternalSourceToConfiguredGameFolder()
+    {
+        Directory.Delete(world, true);
+        var downloads = Path.Combine(root, "downloads", "ImportedWorld");
+        Directory.CreateDirectory(downloads);
+        await File.WriteAllTextAsync(Path.Combine(downloads, "chunk"), "downloaded save");
+
+        await engine.ImportAsync(downloads);
+
+        Assert.Equal("downloaded save", await File.ReadAllTextAsync(Path.Combine(world, "chunk")));
+        Assert.Equal("downloaded save", await File.ReadAllTextAsync(Path.Combine(downloads, "chunk")));
+        Assert.NotNull((await repo.ReadAsync())!.Manifest.Current);
+    }
+    [Fact]
+    public async Task ImportRejectsSelectingSavesRootInsteadOfOneWorld()
+    {
+        var savesRoot = Path.GetDirectoryName(world)!;
+
+        await engine.ImportAsync(savesRoot);
+
+        Assert.Equal(SyncState.Error, engine.Status.State);
+        Assert.Null(await repo.ReadAsync());
+    }
+    [Fact]
+    public async Task InterruptedCaptureRequiresManualResolution()
+    {
+        await engine.ImportAsync(world);
+        await journal.WriteAsync(new()
+        {
+            SessionId = "session", WorldId = "world", WorldPath = world,
+            RepositoryIdentity = "test", Stage = SessionStage.SnapshotPending,
+            BaseVersion = (await repo.ReadAsync())!.Manifest.Current
+        });
+
+        await engine.RecoverAsync();
+
+        Assert.Equal(SyncState.Conflict, engine.Status.State);
+        Assert.Equal(SessionStage.Conflict, (await journal.ReadAsync())!.Stage);
+    }
+    [Fact]
+    public async Task ChangesAfterSnapshotPreventPublication()
+    {
+        await engine.ImportAsync(world);
+        var original = (await repo.ReadAsync())!.Manifest.Current!.Id;
+        game.OnExit = () => File.WriteAllTextAsync(Path.Combine(world, "chunk"), "tracked progress");
+        repo.BeforeUpload = () => File.WriteAllTextAsync(Path.Combine(world, "chunk"), "external progress");
+
+        await engine.PlayAsync();
+
+        Assert.Equal(SyncState.Conflict, engine.Status.State);
+        Assert.Equal(original, (await repo.ReadAsync())!.Manifest.Current!.Id);
+        Assert.Equal("external progress", await File.ReadAllTextAsync(Path.Combine(world, "chunk")));
+        Assert.True(File.Exists((await journal.ReadAsync())!.Snapshot!.Path));
     }
 
     public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }

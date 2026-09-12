@@ -4,9 +4,10 @@ Aplicativo Windows para alternar o anfitrião de um mundo local de Valheim entre
 WPF + bandeja, .NET 10 e armazenamento Cloudflare R2. O app baixa o mundo antes de abrir
 o jogo e publica o progresso quando o processo do Valheim termina.
 
-**Estado:** v1 implementada com testes locais e renderização WPF. A validação em R2 real,
-em um save real do Valheim 1.0 e em duas contas Steam continua necessária antes de usar
-o mundo principal do grupo. Não há bucket de testes configurado neste ambiente.
+**Estado:** v1 implementada com testes locais e renderização WPF. A compatibilidade com
+R2 e o round-trip estrutural de um save real do Valheim 1.0 foram validados. A abertura
+da cópia no jogo e o fluxo com duas contas Steam continuam necessários antes de usar o
+mundo principal do grupo.
 
 ## Primeiro uso
 
@@ -17,16 +18,22 @@ o mundo principal do grupo. Não há bucket de testes configurado neste ambiente
    Preencha endpoint S3 R2, bucket, chaves, apelido e um `worldId` igual para todo o grupo.
    O arquivo [config.example.json](config.example.json) descreve os campos.
 3. Use um bucket privado exclusivo para este mundo. As chaves precisam permitir ler,
-   escrever e excluir objetos nesse bucket. Cada instalação mantém seu próprio
-   `installationId`. Não publique o arquivo com credenciais nem o coloque no Git.
+   escrever e excluir objetos nesse bucket. O identificador de cada instalação é
+   criado separadamente pelo app e não precisa ser
+   compartilhado. Não publique o arquivo com credenciais nem o coloque no Git.
 4. Garanta que o mundo está salvo **localmente**, na pasta de saves do Valheim. Para
    mundos anteriores ao formato 1.0, converta e salve pelo próprio jogo primeiro.
    O app não sincroniza Steam Cloud e não converte saves.
 5. No computador que possui o mundo inicial, feche o Valheim e escolha **Importar mundo
-   local**. Selecione a pasta de um único mundo 1.0, incluindo todas as partes.
-   Não selecione a pasta `worlds_local` inteira. O bucket precisa estar sem versão vigente.
-6. Nos demais computadores, configure `worldFolderName` e `savesRoot` para o destino
-   local do mesmo mundo, e clique em **Recarregar**. Não importe outra cópia.
+   local**. A origem pode estar em Downloads ou em outra pasta: o app cria um snapshot,
+   copia-o para `savesRoot\worldFolderName` — a pasta efetivamente usada pelo jogo — e
+   preserva a origem. Se o destino já existir, ele fica guardado como backup. Selecione
+   a pasta de um único mundo 1.0, não a pasta `worlds_local` inteira. O bucket precisa
+   estar sem versão vigente.
+6. Nos demais computadores, reutilize `endpoint`, `bucket`, credenciais, `worldId`,
+   `worldFolderName` e retenção. Cada amigo ajusta apenas `player` e aponta `savesRoot`
+   para a pasta local do Valheim naquele PC. A identidade da instalação é automática.
+   Clique em **Recarregar** e depois em **Jogar**; não importe outra cópia.
 7. Clique em **Jogar**. Depois que o app abrir o Valheim, escolha personagem, mundo e
    a opção de iniciar servidor dentro do jogo.
 8. Ao encerrar o Valheim, aguarde **Sincronizado**. Fechar somente a janela do app o
@@ -35,6 +42,19 @@ o mundo principal do grupo. Não há bucket de testes configurado neste ambiente
 Quando outra pessoa estiver hospedando, use **Amigos na Steam** e entre pela lista de
 amigos/convite. O convidado não trava, baixa ou publica o mundo. O status indica uma
 sessão gerenciada aberta; não garante que o anfitrião já abriu o servidor no jogo.
+
+### Origem de importação e pasta do jogo
+
+A pasta escolhida em **Importar mundo local** é apenas a origem. Por exemplo, se o dono
+recebeu ou guardou `Downloads\MeuMundo`, o app cria um snapshot dessa pasta e instala
+uma cópia verificada em `savesRoot\worldFolderName`. É essa segunda pasta que o Valheim
+abre e que o app acompanha depois da partida. A pasta em Downloads não participa das
+sincronizações seguintes e permanece intacta como cópia original.
+
+No computador do amigo não é necessário existir a pasta de origem. Com o mesmo bucket,
+credenciais, `worldId` e `worldFolderName`, o botão **Jogar** baixa a versão vigente e
+cria/substitui o destino dentro do `savesRoot` daquele PC. O amigo usa seu próprio
+`player`; `installation.json` é gerado automaticamente e nunca deve ser copiado.
 
 ## Rede, conflitos e recuperação
 
