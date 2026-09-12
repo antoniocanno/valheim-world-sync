@@ -36,6 +36,10 @@ internal static class Program
         window.DataContext = new Preview(model, "Midgard", "Sincronização pendente",
             "Progresso local salvo. Aguardando outro anfitrião liberar o mundo. Você pode exportar uma cópia para recuperação.");
         Render(window, Path.Combine(output, "pending.png"), 820, 540);
+        var profileSelector = Descendants<System.Windows.Controls.ComboBox>(window.Content as DependencyObject).Single();
+        var selectedText = Descendants<System.Windows.Controls.TextBlock>(profileSelector).Select(text => text.Text).ToArray();
+        if (!selectedText.Contains("XARABASKA") || selectedText.Any(text => text.Contains("WorldProfile {")))
+            throw new Exception("Profile selector must display only the profile alias.");
         window.DataContext = new Preview(model, "Um mundo com um nome bastante longo para testar o layout",
             "Progresso precisa de atenção", "Outra versão pode ter avançado. Progresso local preservado; exporte para recuperação manual.");
         Render(window, Path.Combine(output, "conflict.png"), 760, 460);
@@ -67,6 +71,16 @@ internal static class Program
         Console.WriteLine("WPF smoke passed: " + output);
         return 0;
     }
+    private static IEnumerable<T> Descendants<T>(DependencyObject? parent) where T : DependencyObject
+    {
+        if (parent is null) yield break;
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match) yield return match;
+            foreach (var descendant in Descendants<T>(child)) yield return descendant;
+        }
+    }
     private static void Render(Window window, string path, double width, double height)
     {
         var content = (FrameworkElement)window.Content;
@@ -95,8 +109,10 @@ internal static class Program
         public double ProgressPercent => 65;
         public string TransferDetails => "";
         public string CloudGuidance => "";
-        public IReadOnlyList<WorldProfile> AvailableProfiles => commands.AvailableProfiles;
-        public WorldProfile? ActiveProfile { get; set; }
+        public IReadOnlyList<WorldProfile> AvailableProfiles { get; } = [new WorldProfile("preview", "preview",
+            new ProfileConnection { Endpoint = "https://example.invalid", Bucket = "preview", WorldId = "preview", WorldDisplayName = "Midgard", WorldFolderName = "Midgard" },
+            new ProfileLocalSettings { CredentialTarget = "preview", Alias = "XARABASKA" })];
+        public WorldProfile? ActiveProfile { get => AvailableProfiles[0]; set { } }
         public AsyncCommand ResetCommand => commands.ResetCommand;
         public AsyncCommand PlayCommand => commands.PlayCommand;
         public AsyncCommand ConfigureCommand => commands.ConfigureCommand;
