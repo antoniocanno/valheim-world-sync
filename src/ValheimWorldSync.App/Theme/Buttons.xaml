@@ -1,0 +1,26 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Style x:Key="BaseButtonStyle" TargetType="Button">
+  <Setter Property="FontFamily" Value="{StaticResource Font.Interface}"/><Setter Property="FontSize" Value="13"/><Setter Property="Padding" Value="12,8"/><Setter Property="Cursor" Value="Hand"/><Setter Property="BorderThickness" Value="1"/>
+  <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+   <Border x:Name="Surface" CornerRadius="4" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/></Border>
+   <ControlTemplate.Triggers>
+    <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Accent.BronzeHover}"/></Trigger>
+    <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.4"/></Trigger>
+   </ControlTemplate.Triggers>
+  </ControlTemplate></Setter.Value></Setter>
+ </Style>
+ <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+  <Setter Property="Background" Value="{StaticResource Accent.Bronze}"/><Setter Property="BorderBrush" Value="{StaticResource Accent.Bronze}"/><Setter Property="Foreground" Value="{StaticResource Background.Base}"/><Setter Property="FontWeight" Value="SemiBold"/>
+  <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource Accent.BronzeHover}"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{StaticResource Accent.BronzeHover}"/></Trigger></Style.Triggers>
+ </Style>
+ <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+  <Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="{StaticResource Accent.Bronze}"/><Setter Property="Foreground" Value="{StaticResource Accent.Bronze}"/>
+  <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource Accent.Wash}"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{StaticResource Accent.Wash}"/></Trigger></Style.Triggers>
+ </Style>
+ <Style x:Key="DestructiveButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+  <Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="{StaticResource Destructive.Base}"/><Setter Property="Foreground" Value="{StaticResource Destructive.Base}"/>
+  <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource Destructive.Wash}"/></Trigger><Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{StaticResource Destructive.Wash}"/></Trigger></Style.Triggers>
+ </Style>
+ <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}"/>
+ <Style x:Key="CloudButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}"><Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{StaticResource Text.Muted}"/><Setter Property="BorderThickness" Value="0"/></Trigger></Style.Triggers></Style>
+</ResourceDictionary>

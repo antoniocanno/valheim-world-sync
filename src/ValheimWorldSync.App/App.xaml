@@ -1,32 +1,5 @@
-<Application x:Class="ValheimWorldSync.App"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    ShutdownMode="OnExplicitShutdown">
-    <Application.Resources>
-        <SolidColorBrush x:Key="CanvasBrush" Color="#111B18"/>
-        <SolidColorBrush x:Key="PanelBrush" Color="#1C2B24"/>
-        <SolidColorBrush x:Key="TextBrush" Color="#EDF4E9"/>
-        <SolidColorBrush x:Key="MutedBrush" Color="#B5C5B7"/>
-        
-        <Style TargetType="Button">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="Background" Value="#2A3E32"/>
-            <Setter Property="BorderBrush" Value="#4B6352"/>
-            <Setter Property="Padding" Value="14,10"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Template">
-                <Setter.Value><ControlTemplate TargetType="Button">
-                    <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.8"/></Trigger>
-                        <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.4"/></Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#F4D98B"/></Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate></Setter.Value>
-            </Setter>
-        </Style>
-    </Application.Resources>
+<Application x:Class="ValheimWorldSync.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" ShutdownMode="OnExplicitShutdown">
+ <Application.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries>
+  <ResourceDictionary Source="Theme/Colors.xaml"/><ResourceDictionary Source="Theme/Typography.xaml"/><ResourceDictionary Source="Theme/Buttons.xaml"/><ResourceDictionary Source="Theme/Controls.xaml"/>
+ </ResourceDictionary.MergedDictionaries></ResourceDictionary></Application.Resources>
 </Application>
