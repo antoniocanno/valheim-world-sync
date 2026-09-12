@@ -3,6 +3,8 @@ using ValheimWorldSync.Infrastructure.Configuration;
 using ValheimWorldSync.Infrastructure.Storage;
 using ValheimWorldSync.Platform.Windows.Configuration;
 using ValheimWorldSync.Platform.Windows.Credentials;
+using ValheimWorldSync.Platform.Windows.Invitations;
+using Microsoft.Win32;
 
 namespace ValheimWorldSync.Desktop;
 
@@ -88,6 +90,42 @@ public partial class SettingsWindow : Window
         if (selected is null || MessageBox.Show("Excluir este perfil local? O mundo remoto não será removido.",
             "Excluir perfil", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         await Run(async () => { await store.DeleteAsync(selected); await Reload(); });
+    }
+    private async void ExportInviteClicked(object sender, RoutedEventArgs e)
+    {
+        if (selected is null) { ResultText.Text = "Selecione um perfil."; return; }
+        var password = AskPassword(); if (password is null) return;
+        var dialog = new SaveFileDialog { Filter = "Convite Valheim World Sync|*.vwsinvite", FileName = selected.Connection.WorldDisplayName + ".vwsinvite" };
+        if (dialog.ShowDialog(this) != true) return;
+        await Run(async () =>
+        {
+            var credentials = await store.ReadCredentialsAsync(selected) ?? throw new InvalidDataException("Credenciais não encontradas.");
+            var c = selected.Connection;
+            await new InvitationCodec().WriteAsync(dialog.FileName, new(c.Endpoint, c.Bucket, c.RemotePrefix, c.WorldId,
+                c.WorldDisplayName, c.WorldFolderName, c.RetentionCount, credentials), password);
+            ResultText.Text = "Convite protegido exportado. Envie a senha separadamente.";
+        });
+    }
+    private async void ImportInviteClicked(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Filter = "Convite Valheim World Sync|*.vwsinvite" };
+        if (dialog.ShowDialog(this) != true) return;
+        var password = AskPassword(); if (password is null) return;
+        await Run(async () =>
+        {
+            var p = await new InvitationCodec().ReadAsync(dialog.FileName, password);
+            var c = new ProfileConnection { Endpoint = p.Endpoint, Bucket = p.Bucket, RemotePrefix = p.RemotePrefix, WorldId = p.WorldId,
+                WorldDisplayName = p.WorldDisplayName, WorldFolderName = p.WorldFolderName, RetentionCount = p.RetentionCount };
+            using (var repository = new R2WorldRepository(ToConfiguration(c, p.Credentials), c.RemotePrefix)) await repository.TestConnectionAsync();
+            var profile = await store.CreateAsync(c, new ProfileLocalSettings { CredentialTarget = "pending", Alias = p.WorldDisplayName }, p.Credentials);
+            await store.SaveSettingsAsync(catalog.Settings with { SelectedProfileId = profile.Id, PlayerName = PlayerBox.Text.Trim(), OnboardingVersion = 1 });
+            DialogResult = true;
+        });
+    }
+    private string? AskPassword()
+    {
+        var window = new InvitePasswordWindow { Owner = this };
+        return window.ShowDialog() == true ? window.Password : null;
     }
     private async Task Run(Func<Task> action)
     {
