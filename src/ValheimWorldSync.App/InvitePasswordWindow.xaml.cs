@@ -6,7 +6,7 @@ public partial class InvitePasswordWindow : Window
     public InvitePasswordWindow() { InitializeComponent(); }
     private void ContinueClicked(object sender, RoutedEventArgs e)
     {
-        if (Password.Length < 12) { ErrorText.Text = "A senha precisa ter pelo menos 12 caracteres."; return; }
+        if (Password.Length < 3) { ErrorText.Text = "A senha precisa ter pelo menos 3 caracteres."; return; }
         DialogResult = true;
     }
 }

@@ -30,7 +30,7 @@ public sealed class InvitationCodec(int iterations = 600_000)
     }
     public async Task<InvitationPayload> ReadAsync(string path, string password, CancellationToken token = default)
     {
-        if (password.Length < 12) throw new InvalidDataException("A senha do convite deve ter pelo menos 12 caracteres.");
+        if (password.Length < 3) throw new InvalidDataException("A senha do convite deve ter pelo menos 3 caracteres.");
         var envelope = JsonSerializer.Deserialize<InvitationEnvelope>(await File.ReadAllTextAsync(path, token), JsonOptions)
             ?? throw new InvalidDataException("Convite vazio.");
         if (envelope.SchemaVersion != SchemaVersion || envelope.Iterations < 10_000 || envelope.Iterations > 2_000_000)
@@ -57,7 +57,7 @@ public sealed class InvitationCodec(int iterations = 600_000)
     }
     private static void Validate(InvitationPayload p, string password)
     {
-        if (password.Length < 12 || string.IsNullOrWhiteSpace(p.Endpoint) || string.IsNullOrWhiteSpace(p.Bucket) ||
+        if (password.Length < 3 || string.IsNullOrWhiteSpace(p.Endpoint) || string.IsNullOrWhiteSpace(p.Bucket) ||
             string.IsNullOrWhiteSpace(p.WorldId) || (p.RemotePrefix is not "" && p.RemotePrefix != $"worlds/{p.WorldId}/") ||
             string.IsNullOrWhiteSpace(p.WorldDisplayName) || string.IsNullOrWhiteSpace(p.WorldFolderName) || p.RetentionCount is < 0 or > 1000)
             throw new InvalidDataException("Dados do convite inválidos.");

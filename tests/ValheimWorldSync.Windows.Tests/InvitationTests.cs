@@ -27,5 +27,13 @@ public sealed class InvitationTests : IDisposable
         await codec.WriteAsync(path, payload, "a-strong-password");
         Assert.Equal("", (await codec.ReadAsync(path, "a-strong-password")).RemotePrefix);
     }
+    [Fact] public async Task RejectsPasswordsShorterThanThreeCharactersAndAcceptsShortPassword()
+    {
+        var codec = new InvitationCodec(10_000);
+        await Assert.ThrowsAsync<InvalidDataException>(() => codec.WriteAsync(path, Payload, "ab"));
+        await codec.WriteAsync(path, Payload, "abc");
+        await Assert.ThrowsAsync<InvalidDataException>(() => codec.ReadAsync(path, "ab"));
+        Assert.Equal(Payload, await codec.ReadAsync(path, "abc"));
+    }
     public void Dispose() { if (File.Exists(path)) File.Delete(path); }
 }
