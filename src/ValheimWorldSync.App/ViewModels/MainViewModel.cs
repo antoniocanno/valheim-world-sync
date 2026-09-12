@@ -202,7 +202,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private async Task OpenConfiguration()
     {
         var window = new SettingsWindow(profileStore) { Owner = Application.Current.MainWindow };
-        if (window.ShowDialog() == true) await InitializeAsync();
+        if (window.ShowDialog() != true) return;
+        await InitializeAsync();
+        if (window.PendingImportPath is { } importPath && engine is not null)
+            await RunEngine(() => engine.ImportAsync(importPath, lifetime.Token));
     }
     private async Task SelectProfileAsync(WorldProfile selected)
     {

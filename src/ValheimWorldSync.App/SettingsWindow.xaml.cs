@@ -15,6 +15,7 @@ public partial class SettingsWindow : Window
     private WorldProfile? selected;
     private readonly bool startImport;
     private string? pendingImportSource;
+    public string? PendingImportPath { get; private set; }
     public SettingsWindow(ProfileStore store, bool startImport = false)
     {
         InitializeComponent(); this.store = store; this.startImport = startImport;
@@ -132,6 +133,7 @@ public partial class SettingsWindow : Window
             Directory.CreateDirectory(destination);
             foreach (var file in Directory.EnumerateFiles(pendingImportSource))
                 File.Copy(file, Path.Combine(destination, Path.GetFileName(file)), overwrite: true);
+            PendingImportPath = destination;
             pendingImportSource = null;
         }
 
