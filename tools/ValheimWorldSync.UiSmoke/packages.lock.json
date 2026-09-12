@@ -27,7 +27,8 @@
       "valheimworldsync.platform.windows": {
         "type": "Project",
         "dependencies": {
-          "ValheimWorldSync.Core": "[1.0.0, )"
+          "ValheimWorldSync.Core": "[1.0.0, )",
+          "ValheimWorldSync.Infrastructure": "[1.0.0, )"
         }
       },
       "AWSSDK.S3": {

@@ -27,6 +27,11 @@
           "xunit.v3.mtp-v2": "[4.0.0]"
         }
       },
+      "AWSSDK.Core": {
+        "type": "Transitive",
+        "resolved": "4.0.102.4",
+        "contentHash": "cFMZnb05RV290HDdybtgR5b/ypkLekeaoHde4tiQHLmgegGLMmcEKsvThnLm1PJOeWSNFcBxzC5fomOvWiW24A=="
+      },
       "Microsoft.ApplicationInsights": {
         "type": "Transitive",
         "resolved": "2.23.0",
@@ -166,10 +171,27 @@
       "valheimworldsync.core": {
         "type": "Project"
       },
+      "valheimworldsync.infrastructure": {
+        "type": "Project",
+        "dependencies": {
+          "AWSSDK.S3": "[4.0.103.1, )",
+          "ValheimWorldSync.Core": "[1.0.0, )"
+        }
+      },
       "valheimworldsync.platform.windows": {
         "type": "Project",
         "dependencies": {
-          "ValheimWorldSync.Core": "[1.0.0, )"
+          "ValheimWorldSync.Core": "[1.0.0, )",
+          "ValheimWorldSync.Infrastructure": "[1.0.0, )"
+        }
+      },
+      "AWSSDK.S3": {
+        "type": "CentralTransitive",
+        "requested": "[4.0.103.1, )",
+        "resolved": "4.0.103.1",
+        "contentHash": "U7a3gnj6/z5l2bzgASv0PrfXFwLwNKWgQSJjuhV+lcofP52LcQVXVsEwMh9Lv28W+ORmRrYFgJnIV1tqmeRj+w==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.102.4, 5.0.0)"
         }
       }
     }

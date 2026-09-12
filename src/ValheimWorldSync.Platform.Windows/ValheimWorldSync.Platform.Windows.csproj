@@ -4,5 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../ValheimWorldSync.Core/ValheimWorldSync.Core.csproj" />
+    <ProjectReference Include="../ValheimWorldSync.Infrastructure/ValheimWorldSync.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

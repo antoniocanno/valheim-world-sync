@@ -11,6 +11,8 @@ using ValheimWorldSync.Infrastructure.Recovery;
 using ValheimWorldSync.Infrastructure.Storage;
 using ValheimWorldSync.Infrastructure.WorldFiles;
 using ValheimWorldSync.Platform.Windows.Game;
+using ValheimWorldSync.Platform.Windows.Configuration;
+using ValheimWorldSync.Platform.Windows.Credentials;
 
 namespace ValheimWorldSync.Desktop.ViewModels;
 
@@ -21,11 +23,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly DispatcherTimer timer;
     private readonly List<AsyncCommand> commands = [];
     private readonly string dataRoot;
-    private readonly string configPath;
-    private readonly StatusLog log;
+    private readonly ProfileStore profileStore;
+    private StatusLog? log;
     private R2WorldRepository? repository;
     private SyncEngine? engine;
     private AppConfiguration? configuration;
+    private WorldProfile? profile;
+    private AppSettings? settings;
     private bool localWork;
     private string message = "Carregando configuração…";
     private string statusTitle = "Preparando";
@@ -34,7 +38,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public string StatusTitle { get => statusTitle; private set { statusTitle = value; Changed(); } }
     public string WorldLabel { get => worldLabel; private set { worldLabel = value; Changed(); } }
     public bool IsWorking => localWork || engine?.IsBusy == true;
-    public bool CanExit => !IsWorking && !(File.Exists(Path.Combine(dataRoot, "session.json")) && new WindowsGamePlatform().FindProcesses().Count != 0);
+    public bool CanExit => !IsWorking && !(profile is not null && File.Exists(Path.Combine(profile.Root, "session.json")) && new WindowsGamePlatform().FindProcesses().Count != 0);
     public SyncState State { get; private set; } = SyncState.Idle;
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<SyncStatus>? StatusUpdated;
@@ -52,8 +56,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         this.dispatcher = dispatcher;
         this.dataRoot = dataRoot ?? AppConfiguration.DataRoot;
-        configPath = Path.Combine(this.dataRoot, "config.json");
-        log = new StatusLog(this.dataRoot);
+        profileStore = new ProfileStore(this.dataRoot, new WindowsCredentialVault());
         PlayCommand = Command(() => RunEngine(() => engine!.PlayAsync(lifetime.Token)),
             () => engine is not null && !IsWorking && State is SyncState.Idle or SyncState.Offline);
         ConfigureCommand = Command(OpenConfiguration, () => !IsWorking);
@@ -74,15 +77,28 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         try
         {
             repository?.Dispose(); repository = null; engine = null;
-            configuration = await AppConfiguration.LoadAsync(configPath, createTemplate: true);
+            var catalog = await profileStore.LoadOrMigrateAsync(lifetime.Token);
+            settings = catalog.Settings;
+            profile = catalog.Selected;
+            if (profile is null)
+            {
+                configuration = null;
+                WorldLabel = "NENHUM MUNDO CONFIGURADO";
+                ApplyStatus(new(SyncState.Error, "Crie ou importe um perfil em Configuração."));
+                return;
+            }
+            var credentials = await profileStore.ReadCredentialsAsync(profile, lifetime.Token)
+                ?? throw new InvalidDataException("As credenciais protegidas deste perfil não foram encontradas.");
+            configuration = profile.ToLegacyConfiguration(credentials, settings.PlayerName);
             WorldLabel = string.IsNullOrWhiteSpace(configuration.WorldFolderName) ? "NENHUM MUNDO CONFIGURADO" : configuration.WorldFolderName;
             configuration.Validate();
             var installation = await InstallationIdentity.LoadOrCreateAsync(dataRoot, lifetime.Token);
-            repository = new(configuration);
+            log = new StatusLog(profile.Root);
+            repository = new(configuration, profile.Connection.RemotePrefix);
             var game = new PollingGameSession(new WindowsGamePlatform());
-            engine = new(repository, new WorldArchive(dataRoot), new FileSessionJournal(dataRoot), game,
+            engine = new(repository, new WorldArchive(profile.Root), new FileSessionJournal(profile.Root), game,
                 new(configuration.WorldId, configuration.WorldPath, configuration.Endpoint.TrimEnd('/') + "/" + configuration.Bucket,
-                    dataRoot, configuration.Player, installation.Id, configuration.BackupCount));
+                    profile.Root, configuration.Player, installation.Id, configuration.BackupCount));
             engine.StatusChanged += OnStatus;
         }
         catch (Exception e) { Error(e); }
@@ -110,7 +126,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private void ApplyStatus(SyncStatus status)
     {
         State = status.State;
-        log.Write(status.State);
+        log?.Write(status.State);
         StatusTitle = status.State switch
         {
             SyncState.Idle => "Pronto para a próxima partida",
@@ -134,15 +150,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
     private async Task OpenConfiguration()
     {
-        if (!File.Exists(configPath)) await AppConfiguration.LoadAsync(configPath, createTemplate: true);
-        var start = new ProcessStartInfo("notepad.exe") { UseShellExecute = true };
-        start.ArgumentList.Add(configPath);
-        using var editor = Process.Start(start);
-        Message = "Edite o arquivo, salve e clique em Recarregar. Não compartilhe as credenciais publicamente.";
+        Directory.CreateDirectory(dataRoot);
+        OpenShell(dataRoot);
+        Message = "Os perfis locais estão separados. Use a tela de configuração para alterá-los.";
+        await Task.CompletedTask;
     }
     private async Task ImportAsync()
     {
-        configuration = await AppConfiguration.LoadAsync(configPath, createTemplate: true);
+        if (configuration is null) throw new InvalidDataException("Crie ou importe um perfil antes de publicar um mundo.");
         configuration.ValidateRemote();
         var dialog = new OpenFolderDialog { Title = "Escolha a pasta completa de um mundo local do Valheim 1.0" };
         if (dialog.ShowDialog() != true) return;
@@ -152,7 +167,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             configuration = configuration with { WorldFolderName = folder.Name };
             configuration.Validate();
-            await DurableJson.WriteAsync(configPath, configuration);
+            profile = profile! with { Connection = profile.Connection with { WorldFolderName = folder.Name, WorldDisplayName = folder.Name } };
+            await DurableJson.WriteAsync(Path.Combine(profile.Root, "connection.json"), profile.Connection);
         }
         var destination = configuration.WorldPath;
         if (MessageBox.Show($"Copiar '{folder.FullName}' para a pasta usada pelo jogo e publicar como primeiro mundo?\n\nDestino local: {destination}\n\nA origem será preservada. Se o destino existir, ele será guardado como backup. O Valheim deve estar fechado.",
@@ -170,9 +186,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             await Task.Run(async () =>
             {
-                var journal = new FileSessionJournal(dataRoot);
+                var journal = new FileSessionJournal(profile!.Root);
                 var session = await journal.ReadAsync(lifetime.Token);
-                var archive = new WorldArchive(dataRoot);
+                var archive = new WorldArchive(profile.Root);
                 var snapshot = session?.Snapshot ?? await archive.CreateAsync(configuration!.WorldPath, lifetime.Token);
                 await archive.VerifyAsync(snapshot, lifetime.Token);
                 if (string.Equals(Path.GetFullPath(dialog.FileName), Path.GetFullPath(snapshot.Path), StringComparison.OrdinalIgnoreCase))
