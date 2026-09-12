@@ -12,15 +12,17 @@ namespace ValheimWorldSync.Infrastructure.Storage;
 
 public sealed class R2WorldRepository : IWorldRepository, IDisposable
 {
-    private readonly AmazonS3Client client;
+    private readonly IAmazonS3 client;
+    private readonly Func<DateTimeOffset> utcNow;
     private readonly RemoteClock clock = new();
     private readonly string bucket;
     private readonly string worldId;
     private readonly string prefix;
-    public DateTimeOffset UtcNow => clock.UtcNow;
+    public DateTimeOffset UtcNow => utcNow();
     public R2WorldRepository(AppConfiguration config, string prefix = "")
     {
         config.Validate();
+        utcNow = () => clock.UtcNow;
         this.prefix = prefix;
         bucket = config.Bucket;
         worldId = config.WorldId;
@@ -31,6 +33,10 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
             RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
             Timeout = TimeSpan.FromMinutes(15)
         });
+    }
+    internal R2WorldRepository(IAmazonS3 client, string bucket, string worldId, Func<DateTimeOffset> utcNow)
+    {
+        this.client = client; this.bucket = bucket; this.worldId = worldId; this.utcNow = utcNow; prefix = "";
     }
     public async Task<ManifestSnapshot?> ReadAsync(CancellationToken cancellationToken = default) =>
         await Retry(async () =>

@@ -14,6 +14,7 @@ public sealed record AppConfiguration
         "AppData", "LocalLow", "IronGate", "Valheim", "worlds_local");
     public int BackupCount { get; init; } = 10;
     public string InstallationId { get; init; } = Guid.NewGuid().ToString("N");
+    [System.Text.Json.Serialization.JsonIgnore]
     public string WorldPath => Path.Combine(SavesRoot, WorldFolderName);
     public static string DataRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ValheimWorldSync");
     public static string DefaultPath => Path.Combine(DataRoot, "config.json");

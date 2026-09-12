@@ -1,0 +1,6 @@
+<Project>
+  <Import Project="../Directory.Build.props"/>
+  <!-- Tests using in-memory fakes intentionally exercise the default cancellation path.
+       Network integration and explicit cancellation scenarios supply their own tokens. -->
+  <PropertyGroup><NoWarn>$(NoWarn);xUnit1051</NoWarn></PropertyGroup>
+</Project>

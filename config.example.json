@@ -1,0 +1,12 @@
+{
+  "endpoint": "https://ACCOUNT_ID.r2.cloudflarestorage.com",
+  "bucket": "valheim-mundo",
+  "accessKeyId": "",
+  "secretAccessKey": "",
+  "player": "Seu apelido",
+  "worldId": "mundo-do-grupo",
+  "worldFolderName": "NomeDaPastaDoMundo",
+  "savesRoot": "C:\\Users\\SEU_USUARIO\\AppData\\LocalLow\\IronGate\\Valheim\\worlds_local",
+  "backupCount": 10,
+  "installationId": "mantenha-o-identificador-gerado-pelo-app"
+}

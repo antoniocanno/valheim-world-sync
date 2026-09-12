@@ -8,6 +8,8 @@ internal sealed class MemoryRepository : IWorldRepository
     private ManifestSnapshot? current;
     public DateTimeOffset UtcNow { get; set; } = new(2026, 9, 12, 0, 0, 0, TimeSpan.Zero);
     public Dictionary<string, byte[]> Objects { get; } = [];
+    public Func<Task>? BeforeUpload { get; set; }
+    public Action<WorldManifest>? Written { get; set; }
     public bool FailUpload { get; set; }
     public bool FailDelete { get; set; }
     public Action? BeforeWrite { get; set; }
@@ -20,11 +22,13 @@ internal sealed class MemoryRepository : IWorldRepository
             BeforeWrite?.Invoke();
             if (current?.ETag != expectedETag) return Task.FromResult<ManifestSnapshot?>(null);
             current = new(manifest, Guid.NewGuid().ToString());
+            Written?.Invoke(manifest);
             return Task.FromResult<ManifestSnapshot?>(current);
         }
     }
     public async Task UploadAsync(WorldVersion version, string archivePath, CancellationToken cancellationToken = default)
     {
+        if (BeforeUpload is not null) await BeforeUpload();
         if (FailUpload) throw new IOException("offline");
         Objects[version.Key] = await File.ReadAllBytesAsync(archivePath, cancellationToken);
     }

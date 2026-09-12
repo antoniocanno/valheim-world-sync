@@ -14,6 +14,17 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        if (e.Args is ["--smoke-test", var output])
+        {
+            try { await Desktop.StartupSmoke.RunAsync(output, Dispatcher); Shutdown(0); }
+            catch (Exception error)
+            {
+                Directory.CreateDirectory(output);
+                File.WriteAllText(Path.Combine(output, "failure.txt"), error.ToString());
+                Shutdown(1);
+            }
+            return;
+        }
         instance = new Mutex(true, "Local\\ValheimWorldSync-" + Environment.UserName, out ownsMutex);
         if (!ownsMutex)
         {

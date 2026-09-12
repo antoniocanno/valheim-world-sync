@@ -22,6 +22,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly List<AsyncCommand> commands = [];
     private readonly string dataRoot;
     private readonly string configPath;
+    private readonly StatusLog log;
     private R2WorldRepository? repository;
     private SyncEngine? engine;
     private AppConfiguration? configuration;
@@ -52,6 +53,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         this.dispatcher = dispatcher;
         this.dataRoot = dataRoot ?? AppConfiguration.DataRoot;
         configPath = Path.Combine(this.dataRoot, "config.json");
+        log = new StatusLog(this.dataRoot);
         PlayCommand = Command(() => RunEngine(() => engine!.PlayAsync(lifetime.Token)),
             () => engine is not null && !IsWorking && State is SyncState.Idle or SyncState.Offline);
         ConfigureCommand = Command(OpenConfiguration, () => !IsWorking);
@@ -107,6 +109,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private void ApplyStatus(SyncStatus status)
     {
         State = status.State;
+        log.Write(status.State);
         StatusTitle = status.State switch
         {
             SyncState.Idle => "Pronto para a próxima partida",

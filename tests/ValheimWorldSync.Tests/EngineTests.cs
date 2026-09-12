@@ -9,6 +9,7 @@ namespace ValheimWorldSync.Tests;
 public sealed class EngineTests : IDisposable
 {
     private readonly string root = Path.Combine(Path.GetTempPath(), "vws-engine-" + Guid.NewGuid().ToString("N"));
+    private readonly ManualTime time = new();
     private readonly MemoryRepository repo = new();
     private readonly TestGame game = new();
     private readonly FileSessionJournal journal;
@@ -22,7 +23,7 @@ public sealed class EngineTests : IDisposable
         File.WriteAllText(Path.Combine(world, "chunk"), "initial");
         journal = new(Path.Combine(root, "app"));
         archive = new(Path.Combine(root, "app"));
-        engine = new(repo, archive, journal, game, new("world", world, "test", Path.Combine(root, "app"), "A", "a"));
+        engine = new(repo, archive, journal, game, new("world", world, "test", Path.Combine(root, "app"), "A", "a"), time);
     }
     [Fact]
     public async Task ImportPlayAndClosePublishesAutomatically()
@@ -99,6 +100,54 @@ public sealed class EngineTests : IDisposable
         Assert.Equal(SyncState.Conflict, engine.Status.State);
         Assert.Empty(repo.Objects);
     }
+    [Fact]
+    public async Task HeartbeatContinuesDuringUploadAfterGameExit()
+    {
+        await engine.ImportAsync();
+        var uploading = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var allowUpload = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var renewed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        game.OnExit = () => File.WriteAllTextAsync(Path.Combine(world, "chunk"), "new progress");
+        repo.BeforeUpload = async () => { uploading.TrySetResult(); await allowUpload.Task; };
+        var playing = engine.PlayAsync(TestContext.Current.CancellationToken);
+        await uploading.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        Assert.False(game.IsRunning);
+        var originalExpiry = (await repo.ReadAsync())!.Manifest.Lease!.ExpiresAt;
+        repo.Written = m => { if (m.Lease?.ExpiresAt > originalExpiry) renewed.TrySetResult(); };
+        repo.UtcNow += TimeSpan.FromSeconds(60);
+        time.Advance(TimeSpan.FromSeconds(60));
+        try { await renewed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); }
+        finally { allowUpload.TrySetResult(); }
+        await playing;
+        Assert.Equal(SyncState.Idle, engine.Status.State);
+    }
+    [Fact]
+    public async Task ExpiredLeaseWithSameBaseCanRecoverProgress()
+    {
+        await engine.ImportAsync();
+        game.OnExit = async () =>
+        {
+            await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "offline progress");
+            repo.UtcNow += TimeSpan.FromSeconds(200);
+        };
+        await engine.PlayAsync();
+        Assert.Equal(SyncState.Idle, engine.Status.State);
+        Assert.Null(await journal.ReadAsync());
+        Assert.Single((await repo.ReadAsync())!.Manifest.History);
+    }
+    [Fact]
+    public async Task CancelledSessionRetainsJournalForRecovery()
+    {
+        await engine.ImportAsync();
+        using var cancel = new CancellationTokenSource();
+        game.OnExit = () => { cancel.Cancel(); return Task.CompletedTask; };
+        await engine.PlayAsync(cancel.Token);
+        Assert.NotNull(await journal.ReadAsync());
+        game.OnExit = null;
+        await engine.RecoverAsync();
+        Assert.Null(await journal.ReadAsync());
+    }
+
     public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
     private sealed class TestGame : IGameSession
     {

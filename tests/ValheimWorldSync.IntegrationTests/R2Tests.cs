@@ -18,7 +18,7 @@ public sealed class R2Tests
         var one = new WorldManifest { WorldId = config.WorldId };
         var two = one with { Revision = Guid.NewGuid().ToString("N") };
         var writes = await Task.WhenAll(a.TryWriteAsync(one, null), b.TryWriteAsync(two, null));
-        var winner = Assert.Single(writes.Where(w => w is not null))!;
+        var winner = Assert.Single(writes, w => w is not null)!;
         var updated = await a.TryWriteAsync(winner.Manifest with { Revision = Guid.NewGuid().ToString("N") }, winner.ETag);
         Assert.NotNull(updated);
         Assert.Null(await b.TryWriteAsync(two, winner.ETag));

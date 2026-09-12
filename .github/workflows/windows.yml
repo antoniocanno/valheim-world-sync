@@ -1,0 +1,28 @@
+name: Windows build
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build, tests and WPF rendering
+        shell: pwsh
+        run: ./scripts/verify.ps1
+      - name: Publish self-contained executable
+        shell: pwsh
+        run: ./scripts/publish.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ValheimWorldSync-win-x64
+          path: artifacts/publish/win-x64/ValheimWorldSync.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WPF-preview
+          path: artifacts/ui-smoke/*.png

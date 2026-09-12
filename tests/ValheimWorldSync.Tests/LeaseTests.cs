@@ -16,7 +16,7 @@ public sealed class LeaseTests
             catch (WorldBusyException) { return false; }
         }
         var results = await Task.WhenAll(Task.Run(() => Acquire("a")), Task.Run(() => Acquire("b")));
-        Assert.Single(results.Where(x => x));
+        Assert.Single(results, x => x);
     }
     [Fact]
     public async Task ExpiredOwnerCannotPublishRenewOrReleaseNewOwner()
