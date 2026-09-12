@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="src/ValheimWorldSync.App/ValheimWorldSync.App.csproj" />
+  <Project Path="src/ValheimWorldSync.Core/ValheimWorldSync.Core.csproj" />
+  <Project Path="src/ValheimWorldSync.Infrastructure/ValheimWorldSync.Infrastructure.csproj" />
+  <Project Path="tools/ValheimWorldSync.Diagnostics/ValheimWorldSync.Diagnostics.csproj" />
+  <Project Path="tests/ValheimWorldSync.Tests/ValheimWorldSync.Tests.csproj" />
+  <Project Path="tests/ValheimWorldSync.IntegrationTests/ValheimWorldSync.IntegrationTests.csproj" />
+</Solution>
