@@ -40,6 +40,14 @@ public partial class SettingsWindow : Window
         SavesBox.Text = l.SavesRootOverride ?? ""; ResultText.Text = "";
     }
     private void NewClicked(object sender, RoutedEventArgs e) => ClearForNew();
+    private void ChooseWorldClicked(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog { Title = "Escolha a pasta completa de um mundo local do Valheim 1.0" };
+        if (dialog.ShowDialog(this) != true) return;
+        var name = new DirectoryInfo(dialog.FolderName).Name;
+        FolderBox.Text = name; if (string.IsNullOrWhiteSpace(DisplayBox.Text)) DisplayBox.Text = name;
+        if (string.IsNullOrWhiteSpace(AliasBox.Text)) AliasBox.Text = name;
+    }
     private void ClearForNew()
     {
         selected = null; ProfilesBox.SelectedItem = null; EndpointBox.Clear(); BucketBox.Clear(); AccessBox.Clear(); SecretBox.Clear();

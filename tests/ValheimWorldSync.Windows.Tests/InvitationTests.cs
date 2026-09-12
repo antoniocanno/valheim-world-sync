@@ -21,5 +21,11 @@ public sealed class InvitationTests : IDisposable
         var text = await File.ReadAllTextAsync(path); await File.WriteAllTextAsync(path, text.Replace("ciphertext", "ciphertexu"));
         await Assert.ThrowsAsync<InvalidDataException>(() => codec.ReadAsync(path, "a-strong-password"));
     }
+    [Fact] public async Task SupportsLegacyRootPrefix()
+    {
+        var codec = new InvitationCodec(10_000); var payload = Payload with { RemotePrefix = "" };
+        await codec.WriteAsync(path, payload, "a-strong-password");
+        Assert.Equal("", (await codec.ReadAsync(path, "a-strong-password")).RemotePrefix);
+    }
     public void Dispose() { if (File.Exists(path)) File.Delete(path); }
 }

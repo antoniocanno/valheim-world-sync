@@ -219,7 +219,7 @@ public sealed class EngineTests : IDisposable
         Assert.True(Directory.GetFiles(Path.Combine(root, "app", "recovery"), "*.json").Length >= 2);
     }
 
-    public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    public void Dispose() => ArchiveTests.DeleteEventually(root);
     private sealed class TestGame : IGameSession
     {
         public bool IsRunning { get; set; }

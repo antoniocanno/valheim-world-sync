@@ -20,7 +20,7 @@
                     <TextBlock Text="{Binding WorldLabel}" Foreground="#A5C98E" FontSize="13" TextTrimming="CharacterEllipsis"/>
                     <TextBlock Text="{Binding StatusTitle}" FontSize="23" FontWeight="SemiBold" Margin="0,10,0,8" AutomationProperties.LiveSetting="Polite"/>
                     <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="14" LineHeight="22" MinHeight="66"/>
-                    <ProgressBar Height="5" Margin="0,14,0,0" IsIndeterminate="{Binding IsProgressIndeterminate}" Value="{Binding ProgressPercent}" Foreground="#A5C98E" Background="#344C3C" BorderThickness="0"/>
+                    <ProgressBar Height="5" Margin="0,14,0,0" IsIndeterminate="{Binding IsProgressIndeterminate, Mode=OneWay}" Value="{Binding ProgressPercent, Mode=OneWay}" Foreground="#A5C98E" Background="#344C3C" BorderThickness="0"/>
                     <TextBlock Text="{Binding TransferDetails}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,6,0,0"/>
                 </StackPanel>
             </Border>

@@ -75,6 +75,17 @@ public sealed class ArchiveTests : IDisposable
         await Assert.ThrowsAsync<IOException>(() => archive.InstallAsync(LeaseTests.Version("one"), "absent", Path.Combine(root,"world"), () => true));
     }
     [Fact]
+    public async Task MigratesLegacyArtifactsOutOfWorldSelector()
+    {
+        var saves = Path.Combine(root, "worlds_local");
+        var legacy = Path.Combine(saves, ".vws-backup-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(legacy); await File.WriteAllTextAsync(Path.Combine(legacy, "world.fwl"), "old");
+        var archive = new WorldArchive(Path.Combine(root, "app"));
+        Assert.Equal(1, await archive.MigrateLegacyArtifactsAsync(saves, "Viking"));
+        Assert.False(Directory.Exists(legacy));
+        Assert.Single(Directory.GetFiles(Path.Combine(root, "app", "recovery"), "*.zip"));
+    }
+    [Fact]
     public async Task RejectsDataDirectoryNestedInsideWorld()
     {
         var world = Path.Combine(root, "world");
@@ -110,5 +121,13 @@ public sealed class ArchiveTests : IDisposable
         await Assert.ThrowsAsync<IOException>(() => new WorldArchive(app).RecoverInstallAsync(target, () => false));
         Assert.True(File.Exists(Path.Combine(app, "install.json")));
     }
-    public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    public void Dispose() => DeleteEventually(root);
+    internal static void DeleteEventually(string path)
+    {
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            try { if (Directory.Exists(path)) Directory.Delete(path, true); return; }
+            catch (IOException) when (attempt < 9) { Thread.Sleep(50); }
+        }
+    }
 }

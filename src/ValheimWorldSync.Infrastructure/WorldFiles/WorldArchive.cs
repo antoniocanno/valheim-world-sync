@@ -211,6 +211,23 @@ public sealed class WorldArchive(string dataRoot, string? recoveryDirectory = nu
         await DurableJson.WriteAsync(Path.ChangeExtension(destination, ".json"), entry, token);
         return entry;
     }
+    public async Task<int> MigrateLegacyArtifactsAsync(string savesRoot, string player, CancellationToken token = default)
+    {
+        if (!Directory.Exists(savesRoot) || File.Exists(InstallJournal)) return 0;
+        var migrated = 0;
+        foreach (var directory in Directory.EnumerateDirectories(savesRoot, ".vws-*", SearchOption.TopDirectoryOnly))
+        {
+            var name = Path.GetFileName(directory);
+            var origin = name.StartsWith(".vws-backup-", StringComparison.Ordinal) ? "backup-legado" :
+                name.StartsWith(".vws-staging-", StringComparison.Ordinal) ? "staging-legado" : null;
+            var prefix = origin == "backup-legado" ? ".vws-backup-" : ".vws-staging-";
+            if (origin is null || !Guid.TryParseExact(name[prefix.Length..], "N", out _)) continue;
+            var snapshot = await CreateAsync(directory, token);
+            await PreserveAsync(snapshot, player, origin, token);
+            File.Delete(snapshot.Path); Directory.Delete(directory, true); migrated++;
+        }
+        return migrated;
+    }
     private static bool OwnedWorkspace(string staging, string backup, string parent, string legacyParent)
     {
         var workspace = Path.GetDirectoryName(Path.GetFullPath(staging));

@@ -27,6 +27,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly bool interactive;
     private StatusLog? log;
     private R2WorldRepository? repository;
+    private WorldArchive? worldArchive;
     private SyncEngine? engine;
     private AppConfiguration? configuration;
     private WorldProfile? profile;
@@ -124,7 +125,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             log = new StatusLog(profile.Root);
             repository = new(configuration, profile.Connection.RemotePrefix);
             var game = new PollingGameSession(new WindowsGamePlatform());
-            engine = new(repository, new WorldArchive(profile.Root, Path.Combine(dataRoot, "recovery", profile.Id), profile.Id), new FileSessionJournal(profile.Root), game,
+            worldArchive = new WorldArchive(profile.Root, Path.Combine(dataRoot, "recovery", profile.Id), profile.Id);
+            engine = new(repository, worldArchive, new FileSessionJournal(profile.Root), game,
                 new(configuration.WorldId, configuration.WorldPath, configuration.Endpoint.TrimEnd('/') + "/" + configuration.Bucket,
                     profile.Root, configuration.Player, installation.Id, configuration.BackupCount,
                     profile.Connection.WorldDisplayName, profile.Connection.WorldFolderName));
@@ -133,7 +135,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
         catch (Exception e) { Error(e); }
         finally { localWork = false; Refresh(); timer.Start(); }
-        if (engine is not null) await RunEngine(() => engine.RecoverAsync(lifetime.Token));
+        if (engine is not null)
+        {
+            await RunEngine(() => engine.RecoverAsync(lifetime.Token));
+            if (new WindowsGamePlatform().FindProcesses().Count == 0 && worldArchive is not null && profile is not null && settings is not null)
+            {
+                try { await worldArchive.MigrateLegacyArtifactsAsync(profile.SavesRoot, settings.PlayerName, lifetime.Token); }
+                catch (Exception exception) { Error(exception); }
+            }
+        }
     }
     private async void OnTimer(object? sender, EventArgs args)
     {
@@ -205,7 +215,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         configuration.ValidateRemote();
         var dialog = new OpenFolderDialog { Title = "Escolha a pasta completa de um mundo local do Valheim 1.0" };
         if (dialog.ShowDialog() != true) return;
-        if (File.Exists(Path.Combine(dataRoot, "session.json"))) throw new InvalidDataException("Resolva a sessão pendente antes de alterar o mundo.");
+        if (profile is not null && File.Exists(Path.Combine(profile.Root, "session.json"))) throw new InvalidDataException("Resolva a sessão pendente antes de alterar o mundo.");
         var folder = new DirectoryInfo(dialog.FolderName);
         if (string.IsNullOrWhiteSpace(configuration.WorldFolderName))
         {
