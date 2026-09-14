@@ -14,7 +14,9 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
     {
         Directory.CreateDirectory(DataRoot);
         var settings = await DurableJson.ReadAsync<AppSettings>(SettingsPath, token) ?? new AppSettings();
-        if (!File.Exists(SettingsPath)) await DurableJson.WriteAsync(SettingsPath, settings, token);
+        var migrated = MigrateSettings(settings);
+        if (!File.Exists(SettingsPath) || migrated != settings) await DurableJson.WriteAsync(SettingsPath, migrated, token);
+        settings = migrated;
         ValidateSettings(settings);
         var profiles = new List<WorldProfile>();
         if (Directory.Exists(ProfilesRoot))
@@ -34,6 +36,7 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
 
     public async Task SaveSettingsAsync(AppSettings settings, CancellationToken token = default)
     {
+        settings = settings with { Language = AppLanguage.NormalizeStrict(settings.Language) };
         ValidateSettings(settings);
         await DurableJson.WriteAsync(SettingsPath, settings, token);
     }
@@ -91,9 +94,20 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
         if (settings.SelectedProfileId == profile.Id) await SaveSettingsAsync(settings with { SelectedProfileId = null }, token);
     }
 
+    private static AppSettings MigrateSettings(AppSettings settings)
+    {
+        if (settings.SchemaVersion == 1)
+            return settings with { SchemaVersion = 2, Language = AppLanguage.Normalize(settings.Language) };
+        if (settings.SchemaVersion == 2 && !AppLanguage.IsSupported(settings.Language))
+            return settings with { Language = AppLanguage.Default };
+        return settings;
+    }
+
     private static void ValidateSettings(AppSettings settings)
     {
-        if (settings.SchemaVersion != 1 || string.IsNullOrWhiteSpace(settings.PlayerName) || settings.PlayerName.Length > 80)
+        if ((settings.SchemaVersion != 1 && settings.SchemaVersion != 2) ||
+            string.IsNullOrWhiteSpace(settings.PlayerName) || settings.PlayerName.Length > 80 ||
+            (settings.SchemaVersion == 2 && !AppLanguage.IsSupported(settings.Language)))
             throw new InvalidDataException("Configurações locais inválidas.");
     }
     private static void Validate(string id, ProfileConnection connection, ProfileLocalSettings local)
