@@ -1,86 +1,67 @@
 # Valheim World Sync
 
-Aplicativo Windows em .NET 10/WPF que alterna o anfitrião de um mundo local do Valheim entre amigos usando Cloudflare R2. Antes de abrir o jogo, o launcher adquire uma lease e baixa a versão atual; ao fechar o processo do Valheim, cria um snapshot completo e publica o progresso por CAS.
+Windows app (.NET 10/WPF) that rotates the host of a local Valheim world among friends using Cloudflare R2. Before opening the game, the launcher acquires a lease and downloads the current version; when Valheim closes, it snapshots and publishes progress via CAS.
 
-## Criar o bucket e obter os dados do R2
+## Create the bucket and get the R2 details
 
-Esta etapa é feita uma única vez pelo dono do mundo. Quem entra por convite pode pular para **Primeiro uso**.
+One-time setup by the world owner. Anyone joining via invite can skip to **First run**.
 
-Pré-requisito: conta Cloudflare com R2 ativo.
+Prerequisite: a Cloudflare account with R2 enabled.
 
-1. Crie o bucket: no dashboard Cloudflare vá em **Storage & databases → R2 → Overview → Create bucket**. Informe nome, localização e classe de armazenamento e anote o nome exato do bucket (sensível a maiúsculas/minúsculas).
-2. Anote o endpoint S3: na página **R2 → Overview** copie o endpoint da conta, no formato `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` (o Account ID aparece no dashboard). Buckets com jurisdição usam o endpoint correspondente, por exemplo `https://<ACCOUNT_ID>.eu.r2.cloudflarestorage.com`. O aplicativo aceita apenas URL HTTPS terminada em `.r2.cloudflarestorage.com`, sem caminho, query ou usuário/senha embutidos.
-3. Gere as credenciais S3: em **R2 → Overview → Account Details → Manage** ao lado de **API Tokens**, escolha **Create Account API token** (vale até revogação manual) ou **Create User API token** (herda suas permissões e é desativado se você sair da conta). Em **Permissions** escolha **Object Read & Write** com **Apply to specific buckets only** e selecione apenas o bucket criado. Evite **Admin Read & Write**, que permite criar, listar e excluir buckets e alterar a configuração de todos os buckets da conta.
-4. Guarde na hora o **Access Key ID** e o **Secret Access Key**. O segredo não é exibido novamente.
-5. No aplicativo, preencha assim:
+1. Create the bucket: in the Cloudflare dashboard go to **Storage & databases → R2 → Overview → Create bucket**. Enter a name, location, and storage class, and note the exact bucket name (case-sensitive).
+2. Note the S3 endpoint: on **R2 → Overview** copy the account endpoint, in the form `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` (the Account ID is shown in the dashboard). Jurisdictional buckets use the matching endpoint, e.g. `https://<ACCOUNT_ID>.eu.r2.cloudflarestorage.com`. The app only accepts an HTTPS URL ending in `.r2.cloudflarestorage.com`, with no path, query, or embedded credentials.
+3. Generate the S3 credentials: under **R2 → Overview → Account Details → Manage** next to **API Tokens**, choose **Create Account API token** (valid until manually revoked) or **Create User API token** (inherits your permissions and is disabled if you leave the account). Under **Permissions** choose **Object Read & Write** with **Apply to specific buckets only** and select only the bucket created above. Avoid **Admin Read & Write**, which can create, list, and delete buckets and change the configuration of every bucket in the account.
+4. Save the **Access Key ID** and **Secret Access Key** immediately. The secret is not shown again.
+5. In the app, fill in:
 
-   | Campo do aplicativo | Valor do R2 |
+   | App field | R2 value |
    | --- | --- |
-   | Endpoint | URL do passo 2 |
-   | Bucket | Nome do passo 1 |
-   | Access Key ID | Chave do passo 4 |
-   | Secret Access Key | Segredo do passo 4 |
+   | Endpoint | URL from step 2 |
+   | Bucket | Name from step 1 |
+   | Access Key ID | Key from step 4 |
+   | Secret Access Key | Secret from step 4 |
 
-6. Use **Testar R2**. O teste faz escrita, leitura e exclusão de um arquivo temporário em `worlds/<worldId>/diagnostics/`; por isso um token somente-leitura falha por design. A mensagem esperada é de leitura, escrita e exclusão disponíveis.
+6. Click **Test R2**. The test writes, reads, and deletes a temporary file under `worlds/<worldId>/diagnostics/`; a read-only token fails by design. The expected result reports read, write, and delete access.
 
-Se falhar, confira: endpoint com `https://` e sufixo correto, nome do bucket digitado igual ao criado, par de chaves trocado (secret perdido exige gerar um novo token) e permissão **Object Read & Write** no bucket certo.
+If it fails, check: `https://` endpoint with the correct suffix, bucket name typed exactly as created, correct key pair (a lost secret requires a new token), and **Object Read & Write** permission on the right bucket.
 
-Referências oficiais (em inglês): [S3 API e credenciais](https://developers.cloudflare.com/r2/get-started/s3), [autenticação e permissões de tokens](https://developers.cloudflare.com/r2/api/tokens) e [preços de armazenamento e operações](https://developers.cloudflare.com/r2/platform/pricing).
+Official references: [S3 API and credentials](https://developers.cloudflare.com/r2/get-started/s3), [token authentication and permissions](https://developers.cloudflare.com/r2/api/tokens), and [storage and operations pricing](https://developers.cloudflare.com/r2/platform/pricing).
 
-## Primeiro uso
+## First run
 
-1. Execute `ValheimWorldSync.exe`. O aplicativo é self-contained; Steam e Valheim continuam sendo dependências externas.
-2. Informe seu nome local e escolha **Criar mundo compartilhado** ou **Entrar com convite**.
-3. Ao criar, use os dados obtidos na seção **Criar o bucket e obter os dados do R2**, clique em **Testar R2** e selecione a pasta completa do mundo. O launcher deriva o nome da pasta e usa `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\worlds_local` por padrão.
-4. Publique o mundo com **Importar mundo local** e exporte um `.vwsinvite`. O convite já sai cifrado por senha; envie arquivo e senha por canais separados.
+1. Run `ValheimWorldSync.exe`. The app is self-contained; Steam and Valheim remain external dependencies.
+2. Enter your local player name and choose **Create shared world** or **Join with invite**.
+3. When creating, use the details from **Create the bucket and get the R2 details**, click **Test R2**, and select the full world folder. Defaults to `%USERPROFILE%\AppData\LocalLow\IronGate\Valheim\worlds_local`.
+4. Publish with **Import local world** and export a `.vwsinvite`. The invite is already password-encrypted; send the file and the password through separate channels.
 
-> ⚠️ Compartilhe o mundo e o convite apenas com amigos de confiança. O convite contém as chaves R2 com leitura e escrita no bucket: quem tiver o arquivo e a senha pode ler, apagar e publicar objetos e gerar custos de armazenamento e operações na sua conta Cloudflare. O aplicativo não isola jogadores por prefixo.
-5. Para entrar, importe o convite e informe sua senha. Caminhos, nome do jogador e identidade da instalação nunca vêm do computador do dono.
-6. Clique em **Jogar** e escolha no Valheim o nome exato destacado pelo launcher. Aguarde **Sincronizado** após encerrar o jogo.
+> ⚠️ Share worlds and invites only with trusted friends. The invite contains R2 keys with read and write access to the bucket: anyone with the file and password can read, delete, and publish objects and generate storage and operations charges on your Cloudflare account. The app does not isolate players by prefix.
 
-O aplicativo trabalha apenas com mundos locais. Se detectar sinais de Steam Cloud, mostra a orientação **Manage Saves → Worlds → Move to Local**. Ele nunca altera diretamente os arquivos da Steam Cloud.
+5. To join, import the invite and enter its password. Paths, player name, and installation identity never come from the owner's machine.
+6. Click **Play** and pick the exact world name shown by the launcher in Valheim. Wait for **Synced** after closing the game.
 
-## Configuração e credenciais
+The app works with local worlds only. If it detects Steam Cloud signs, it shows **Manage Saves → Worlds → Move to Local**. It never touches Steam Cloud files directly.
 
-Os dados ficam em `%LOCALAPPDATA%\ValheimWorldSync`:
+## Where data lives
 
-- `settings.json`: jogador global, onboarding e perfil selecionado;
-- `installation.json`: identidade local desta instalação;
-- `profiles/<id>/connection.json`: endpoint, bucket, mundo, prefixo e metadados não secretos;
-- `profiles/<id>/local.json`: alias, override avançado do save e referência da credencial;
-- `profiles/<id>/session.json`: sessão durável do perfil;
-- `recovery/<id>`: ZIPs verificados e metadados de recuperação.
+Local state is under `%LOCALAPPDATA%\ValheimWorldSync`; non-secret connection data lives in `profiles/<id>/`, verified recovery ZIPs in `recovery/<id>`. `Access Key ID` and `Secret Access Key` stay in Windows Credential Manager under `ValheimWorldSync/profile/<id>/r2`.
 
-Access Key ID e Secret Access Key ficam no Windows Credential Manager sob `ValheimWorldSync/profile/<id>/r2`.
+Multiple profiles may share a bucket (`worlds/<worldId>/` per world), but R2 isolates by bucket, not by prefix: anyone with the credential sees every world in that bucket.
 
-Vários perfis podem compartilhar um bucket. Cada mundo usa `worlds/<worldId>/` como prefixo remoto, mas o R2 isola por bucket, não por prefixo: quem tem a credencial enxerga todos os mundos do mesmo bucket.
+## Safety and limits
 
-## Concorrência, recuperação e reset
+- No world merging. Any member with write credentials can reset the remote; true owner isolation would require an authorization service outside R2.
+- Replaced worlds are kept as verified recovery ZIPs; reset requires Valheim closed, an exclusive lease, and typing the exact name.
+- Current caps: 4 GiB ZIP, 32 GiB expanded content, 500k entries. Characters, mods, save conversion, and dedicated servers are out of scope.
 
-- Heartbeat de 60 segundos e TTL de 180 segundos durante download, jogo, upload, retry e operações administrativas.
-- Até cinco tentativas com backoff; a UI mostra bytes, tamanho total, tentativa e espera.
-- ZIP imutável publicado antes da troca CAS do manifesto. Perder a lease preserva o progresso local.
-- Staging fica em `.vws-work-*` no diretório pai de `worlds_local`, mantendo os renomes no mesmo volume sem aparecer no seletor do jogo.
-- O mundo substituído é compactado e verificado em `recovery/<perfil>`.
-- **Recuperação** lista data, jogador, tamanho e origem, com exportação, restauração local e exclusão explícita.
-- **Voltar à nuvem** preserva o progresso divergente antes de limpar a pendência.
-- **Reinicializar remoto** exige Valheim fechado, lease exclusiva, checkbox e digitação do nome exato. O remoto anterior é baixado para recuperação e permanece no histórico antes da publicação CAS.
+See `docs/architecture.md` for protocol internals (lease, CAS, manifest schema, staging, retries).
 
-Não há mesclagem de mundos. Qualquer integrante com credencial de escrita pode reinicializar o remoto; isolamento real de proprietário exigiria um serviço de autorização externo ao R2.
+## Development
 
-## Protocolo e limites
-
-O manifesto `lock.json` segue o schema v2 com nome exibido, pasta canônica, retenção e autor das novas versões. A atualização ocorre somente com lease e CAS. Snapshots ficam em `backups/<timestamp>-<id>.zip` dentro do prefixo do mundo.
-
-Limites atuais: ZIP de 4 GiB, conteúdo expandido de 32 GiB e 500 mil entradas. Links, junctions, dispositivos Windows e caminhos ZIP inseguros são rejeitados. Personagens, mods, conversão de saves e servidor dedicado ficam fora do escopo.
-
-## Desenvolvimento
-
-Requer SDK .NET 10.0.302 ou feature band posterior:
+Requires .NET SDK 10.0.302 or a later feature band:
 
 ```powershell
 ./scripts/verify.ps1
 ./scripts/publish.ps1
 ```
 
-O executável único sai em `artifacts/publish/win-x64/ValheimWorldSync.exe`. Testes R2 que alteram manifesto exigem `VWS_R2_TEST_CONFIG` apontando para um bucket ou prefixo exclusivo.
+The single-file executable lands in `artifacts/publish/win-x64/ValheimWorldSync.exe`. R2 tests that mutate the manifest require `VWS_R2_TEST_CONFIG` pointing to an exclusive bucket or prefix.
