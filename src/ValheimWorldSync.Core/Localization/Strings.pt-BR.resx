@@ -265,6 +265,7 @@ A origem será preservada. Se o destino existir, será sobrescrito.</value></dat
   <data name="Profile_NotFound" xml:space="preserve"><value>Perfil não encontrado.</value></data>
   <data name="Profile_PendingSession" xml:space="preserve"><value>Resolva a sessão deste perfil antes de excluí-lo.</value></data>
   <data name="Profile_InvalidSettings" xml:space="preserve"><value>Configurações locais inválidas.</value></data>
+  <data name="Error_InvalidLanguage" xml:space="preserve"><value>Idioma inválido.</value></data>
   <data name="Profile_Invalid" xml:space="preserve"><value>Perfil local inválido.</value></data>
   <data name="Profile_BadPrefix" xml:space="preserve"><value>Prefixo remoto inválido.</value></data>
   <data name="InviteCodec_PasswordShort" xml:space="preserve"><value>A senha do convite deve ter pelo menos 3 caracteres.</value></data>

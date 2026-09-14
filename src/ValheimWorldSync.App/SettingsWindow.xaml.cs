@@ -171,14 +171,15 @@ public partial class SettingsWindow : Window
             await store.UpdateAsync(selected, connection, local, credentials);
             profile = selected with { Connection = connection, Local = local with { CredentialTarget = selected.Local.CredentialTarget } };
         }
+        var language = SelectedLanguage();
         await store.SaveSettingsAsync(catalog.Settings with
         {
             PlayerName = PlayerBox.Text.Trim(),
             SelectedProfileId = profile.Id,
             OnboardingVersion = 1,
-            Language = SelectedLanguage()
+            Language = language
         });
-        if (!string.Equals(AppLanguage.Normalize(catalog.Settings.Language), SelectedLanguage(), StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(AppLanguage.Normalize(catalog.Settings.Language), language, StringComparison.OrdinalIgnoreCase))
             MessageBox.Show(Strings.Get("Settings_RestartNote"), "Valheim World Sync");
         DialogResult = true;
     });

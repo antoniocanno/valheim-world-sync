@@ -265,6 +265,7 @@ The source will be preserved. If the destination exists, it will be overwritten.
   <data name="Profile_NotFound" xml:space="preserve"><value>Profile not found.</value></data>
   <data name="Profile_PendingSession" xml:space="preserve"><value>Resolve this profile's session before deleting it.</value></data>
   <data name="Profile_InvalidSettings" xml:space="preserve"><value>Invalid local settings.</value></data>
+  <data name="Error_InvalidLanguage" xml:space="preserve"><value>Invalid language.</value></data>
   <data name="Profile_Invalid" xml:space="preserve"><value>Invalid local profile.</value></data>
   <data name="Profile_BadPrefix" xml:space="preserve"><value>Invalid remote prefix.</value></data>
   <data name="InviteCodec_PasswordShort" xml:space="preserve"><value>The invite password must be at least 3 characters.</value></data>

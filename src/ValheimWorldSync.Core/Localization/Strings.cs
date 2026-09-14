@@ -16,7 +16,7 @@ public static class Strings
     private static readonly ResourceManager Manager = new(BaseName, typeof(Strings).Assembly);
     private static readonly CultureInfo English = CultureInfo.GetCultureInfo("en-US");
 
-    private static CultureInfo language = English;
+    private static volatile CultureInfo language = English;
 
     /// <summary>Culture used for all string resolution; immune to thread ambient culture.</summary>
     public static CultureInfo Language => language;

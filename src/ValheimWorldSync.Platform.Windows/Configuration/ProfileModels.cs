@@ -1,3 +1,4 @@
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Infrastructure.Configuration;
 using ValheimWorldSync.Platform.Windows.Credentials;
 
@@ -43,7 +44,7 @@ public static class AppLanguage
         if (string.Equals(language?.Trim(), Portuguese, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(language?.Trim(), "pt", StringComparison.OrdinalIgnoreCase))
             return Portuguese;
-        throw new InvalidDataException("Idioma inválido. / Invalid language.");
+        throw new InvalidDataException(Strings.Get("Error_InvalidLanguage"));
     }
 }
 

@@ -7,8 +7,9 @@ namespace ValheimWorldSync.Platform.Windows.Configuration;
 
 public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
 {
+    public const string SettingsFileName = "settings.json";
     public string DataRoot { get; } = Path.GetFullPath(dataRoot);
-    public string SettingsPath => Path.Combine(DataRoot, "settings.json");
+    public string SettingsPath => Path.Combine(DataRoot, SettingsFileName);
     public string ProfilesRoot => Path.Combine(DataRoot, "profiles");
 
     public async Task<ProfileCatalog> LoadAsync(CancellationToken token = default)
@@ -37,7 +38,7 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
 
     public async Task SaveSettingsAsync(AppSettings settings, CancellationToken token = default)
     {
-        settings = settings with { Language = AppLanguage.NormalizeStrict(settings.Language) };
+        settings = settings with { SchemaVersion = 2, Language = AppLanguage.NormalizeStrict(settings.Language) };
         ValidateSettings(settings);
         await DurableJson.WriteAsync(SettingsPath, settings, token);
     }
@@ -106,9 +107,9 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
 
     private static void ValidateSettings(AppSettings settings)
     {
-        if ((settings.SchemaVersion != 1 && settings.SchemaVersion != 2) ||
+        if (settings.SchemaVersion != 2 ||
             string.IsNullOrWhiteSpace(settings.PlayerName) || settings.PlayerName.Length > 80 ||
-            (settings.SchemaVersion == 2 && !AppLanguage.IsSupported(settings.Language)))
+            !AppLanguage.IsSupported(settings.Language))
             throw new InvalidDataException(Strings.Get("Profile_InvalidSettings"));
     }
     private static void Validate(string id, ProfileConnection connection, ProfileLocalSettings local)

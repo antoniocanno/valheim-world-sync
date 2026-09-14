@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using ValheimWorldSync.Core.Localization;
@@ -81,27 +80,14 @@ public sealed class ArchiveTests : IDisposable
     public async Task RejectsDataDirectoryNestedInsideWorld()
     {
         foreach (var (culture, fragment) in new[] { ("en-US", "inside the world folder"), ("pt-BR", "dentro da pasta do mundo") })
+        using (var _ = new TestCultureScope(culture))
         {
-            var previousCulture = CultureInfo.CurrentCulture;
-            var previousUiCulture = CultureInfo.CurrentUICulture;
-            try
-            {
-                var cultureInfo = CultureInfo.GetCultureInfo(culture);
-                CultureInfo.CurrentCulture = cultureInfo;
-                CultureInfo.CurrentUICulture = cultureInfo;
-                Strings.SetLanguage(cultureInfo);
-                var world = Path.Combine(root, "world-" + culture);
-                Directory.CreateDirectory(world);
-                await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "data");
-                var archive = new WorldArchive(Path.Combine(world, ".app-data"), "test");
-                var error = await Assert.ThrowsAsync<InvalidDataException>(() => archive.CreateAsync(world));
-                Assert.Contains(fragment, error.Message);
-            }
-            finally
-            {
-                CultureInfo.CurrentCulture = previousCulture;
-                CultureInfo.CurrentUICulture = previousUiCulture;
-            }
+            var world = Path.Combine(root, "world-" + culture);
+            Directory.CreateDirectory(world);
+            await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "data");
+            var archive = new WorldArchive(Path.Combine(world, ".app-data"), "test");
+            var error = await Assert.ThrowsAsync<InvalidDataException>(() => archive.CreateAsync(world));
+            Assert.Contains(fragment, error.Message);
         }
     }
     [Fact]

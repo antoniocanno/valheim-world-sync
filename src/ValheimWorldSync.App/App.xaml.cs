@@ -63,7 +63,7 @@ public partial class App : Application
     {
         try
         {
-            var path = Path.Combine(AppConfiguration.DataRoot, "settings.json");
+            var path = Path.Combine(AppConfiguration.DataRoot, Platform.Windows.Configuration.ProfileStore.SettingsFileName);
             if (!File.Exists(path)) return AppLanguage.Default;
             var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path), AppConfiguration.JsonOptions);
             return AppLanguage.Normalize(settings?.Language);
