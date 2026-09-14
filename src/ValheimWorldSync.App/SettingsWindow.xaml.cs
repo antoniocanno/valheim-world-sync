@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using System.Windows;
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Infrastructure.Configuration;
 using ValheimWorldSync.Infrastructure.Storage;
 using ValheimWorldSync.Platform.Windows.Configuration;
@@ -10,6 +11,7 @@ namespace ValheimWorldSync.Desktop;
 
 public partial class SettingsWindow : Window
 {
+    private sealed record LanguageOption(string Code, string Label);
     private readonly ProfileStore store;
     private ProfileCatalog catalog = null!;
     private WorldProfile? selected;
@@ -32,10 +34,20 @@ public partial class SettingsWindow : Window
     {
         catalog = await store.LoadAsync();
         PlayerBox.Text = catalog.Settings.PlayerName;
+        var language = AppLanguage.Normalize(catalog.Settings.Language);
+        var options = new[]
+        {
+            new LanguageOption(AppLanguage.English, Strings.Get("Settings_LanguageEnglish")),
+            new LanguageOption(AppLanguage.Portuguese, Strings.Get("Settings_LanguagePortuguese"))
+        };
+        LanguageBox.ItemsSource = options;
+        LanguageBox.SelectedItem = options.First(option => option.Code == language);
         ProfilesBox.ItemsSource = catalog.Profiles;
         ProfilesBox.SelectedItem = catalog.Selected ?? catalog.Profiles.FirstOrDefault();
         if (catalog.Profiles.Count == 0) ClearForNew();
     }
+    private string SelectedLanguage() =>
+        (LanguageBox.SelectedItem as LanguageOption)?.Code ?? AppLanguage.Normalize(catalog.Settings.Language);
     private async void ProfileChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         selected = ProfilesBox.SelectedItem as WorldProfile;
@@ -160,8 +172,11 @@ public partial class SettingsWindow : Window
         {
             PlayerName = PlayerBox.Text.Trim(),
             SelectedProfileId = profile.Id,
-            OnboardingVersion = 1
+            OnboardingVersion = 1,
+            Language = SelectedLanguage()
         });
+        if (!string.Equals(AppLanguage.Normalize(catalog.Settings.Language), SelectedLanguage(), StringComparison.OrdinalIgnoreCase))
+            MessageBox.Show(Strings.Get("Settings_RestartNote"), "Valheim World Sync");
         DialogResult = true;
     });
     private async void DeleteClicked(object sender, RoutedEventArgs e)
