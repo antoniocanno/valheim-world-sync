@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using ValheimWorldSync.Core.Abstractions;
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Core.Models;
 using ValheimWorldSync.Infrastructure.Recovery;
 
@@ -22,7 +23,7 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
     public async Task<LocalSnapshot> CreateAsync(string worldPath, CancellationToken token = default)
     {
         worldPath = Path.GetFullPath(worldPath);
-        if (!Directory.Exists(worldPath)) throw new DirectoryNotFoundException("Pasta do mundo não encontrada. Importe uma pasta de mundo 1.0.");
+        if (!Directory.Exists(worldPath)) throw new DirectoryNotFoundException(Strings.Get("Archive_WorldNotFound"));
         EnsureDataRootOutsideWorld(worldPath);
         RejectReparseAncestors(worldPath);
         var snapshots = Path.Combine(root, "snapshots");
@@ -31,9 +32,9 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
         var path = Path.Combine(snapshots, id + ".zip");
         var temporary = path + ".tmp";
         var sourceEntries = EnumerateSafe(worldPath).Take(MaxEntries + 1).ToArray();
-        if (sourceEntries.Length > MaxEntries) throw new InvalidDataException($"Mundo excede o limite de {MaxEntries:N0} entradas.");
+        if (sourceEntries.Length > MaxEntries) throw new InvalidDataException(Strings.Format("Archive_TooManyEntries", MaxEntries));
         var before = await InventoryAsync(worldPath, sourceEntries, token);
-        if (before.Count == 0) throw new InvalidDataException("A pasta do mundo está vazia.");
+        if (before.Count == 0) throw new InvalidDataException(Strings.Get("Archive_EmptyFolder"));
         long total = 0;
         await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
         {
@@ -45,7 +46,7 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
                 {
                     token.ThrowIfCancellationRequested();
                     total = checked(total + file.Size);
-                    if (total > MaxExpandedBytes) throw new InvalidDataException("Mundo excede o limite expandido de 32 GiB.");
+                    if (total > MaxExpandedBytes) throw new InvalidDataException(Strings.Get("Archive_TooLargeExpanded"));
                     var entry = zip.CreateEntry(file.Name, CompressionLevel.Fastest);
                     // Stable archive metadata; world data stays opaque.
                     entry.LastWriteTime = new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero);
@@ -58,8 +59,8 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
             output.Flush(true);
         }
         var after = await InventoryAsync(worldPath, token);
-        if (TreeHash(before) != TreeHash(after)) throw new IOException("O save mudou durante o backup; tentativa adiada.");
-        if (new FileInfo(temporary).Length > MaxZipBytes) throw new InvalidDataException("ZIP excede o limite de 4 GiB.");
+        if (TreeHash(before) != TreeHash(after)) throw new IOException(Strings.Get("Archive_ChangedDuringBackup"));
+        if (new FileInfo(temporary).Length > MaxZipBytes) throw new InvalidDataException(Strings.Get("Common_ZipTooLarge"));
         // Validate the bytes actually captured, not just the source before/after.
         using (var captured = ZipFile.OpenRead(temporary))
         {
@@ -69,7 +70,7 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
                 await using var stream = entry.Open();
                 contents.Add(new(entry.FullName, entry.Length, Convert.ToHexString(await SHA256.HashDataAsync(stream, token))));
             }
-            if (TreeHash(contents) != TreeHash(before)) throw new IOException("Snapshot inconsistente; arquivos locais preservados.");
+            if (TreeHash(contents) != TreeHash(before)) throw new IOException(Strings.Get("Archive_InconsistentSnapshot"));
         }
         File.Move(temporary, path);
         var now = DateTimeOffset.UtcNow;
@@ -82,7 +83,7 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
     public async Task<string> GetTreeHashAsync(string worldPath, CancellationToken token = default)
     {
         worldPath = Path.GetFullPath(worldPath);
-        if (!Directory.Exists(worldPath)) throw new DirectoryNotFoundException("Pasta do mundo não encontrada.");
+        if (!Directory.Exists(worldPath)) throw new DirectoryNotFoundException(Strings.Get("Archive_WorldNotFoundShort"));
         EnsureDataRootOutsideWorld(worldPath);
         RejectReparseAncestors(worldPath);
         return TreeHash(await InventoryAsync(worldPath, token));
@@ -92,17 +93,17 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
     {
         var path = Path.GetFullPath(snapshot.Path);
         if (!path.StartsWith(Path.Combine(root, "snapshots") + Path.DirectorySeparatorChar, PathComparison))
-            throw new InvalidDataException("Snapshot fora da pasta de recuperação.");
+            throw new InvalidDataException(Strings.Get("Archive_SnapshotOutside"));
         await using var file = File.OpenRead(path);
         if (file.Length != snapshot.Version.Size ||
             Convert.ToHexString(await SHA256.HashDataAsync(file, token)) != snapshot.Version.Sha256)
-            throw new InvalidDataException("Snapshot local alterado ou incompleto; exporte para recuperação manual.");
+            throw new InvalidDataException(Strings.Get("Archive_SnapshotChanged"));
     }
 
     public async Task InstallAsync(WorldVersion version, string zipPath, string worldPath, Func<bool> gameIsRunning, CancellationToken token = default)
     {
         await RecoverInstallAsync(worldPath, gameIsRunning, token);
-        if (gameIsRunning()) throw new IOException("Feche o Valheim antes de instalar o mundo.");
+        if (gameIsRunning()) throw new IOException(Strings.Get("Archive_CloseGameInstall"));
         worldPath = Path.GetFullPath(worldPath);
         RejectReparseAncestors(worldPath);
         var parent = Path.GetDirectoryName(worldPath)!;
@@ -116,13 +117,13 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
         {
             if (input.Length != version.Size || input.Length > MaxZipBytes ||
                 Convert.ToHexString(await SHA256.HashDataAsync(input, token)) != version.Sha256)
-                throw new InvalidDataException("ZIP não corresponde à versão esperada.");
+                throw new InvalidDataException(Strings.Get("Archive_ZipMismatch"));
         }
         using (var zip = ZipFile.OpenRead(zipPath))
         {
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             long expanded = 0;
-            if (zip.Entries.Count > MaxEntries) throw new InvalidDataException($"ZIP excede o limite de {MaxEntries:N0} entradas.");
+            if (zip.Entries.Count > MaxEntries) throw new InvalidDataException(Strings.Format("Archive_ZipTooManyEntries", MaxEntries));
             foreach (var entry in zip.Entries)
             {
                 token.ThrowIfCancellationRequested();
@@ -131,32 +132,32 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
                 var relative = isDirectory ? name.TrimEnd('/') : name;
                 ValidateRelativePath(relative);
                 if (!names.Add(relative) || ((entry.ExternalAttributes >> 16) & 0xF000) == 0xA000)
-                    throw new InvalidDataException("ZIP contém caminhos duplicados ou links.");
+                    throw new InvalidDataException(Strings.Get("Archive_ZipBadPaths"));
                 var destination = Path.GetFullPath(Path.Combine(staging, relative));
                 if (!destination.StartsWith(staging + Path.DirectorySeparatorChar, PathComparison))
-                    throw new InvalidDataException("ZIP contém caminho fora do mundo.");
+                    throw new InvalidDataException(Strings.Get("Archive_ZipOutsideWorld"));
                 expanded = checked(expanded + entry.Length);
-                if (expanded > MaxExpandedBytes) throw new InvalidDataException("ZIP excede o limite expandido.");
+                if (expanded > MaxExpandedBytes) throw new InvalidDataException(Strings.Get("Archive_ZipTooLargeExpanded"));
                 if (isDirectory) { Directory.CreateDirectory(destination); continue; }
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                 await using var source = entry.Open();
                 await using var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true);
                 await source.CopyToAsync(output, token);
-                if (output.Length != entry.Length) throw new InvalidDataException("Entrada ZIP incompleta.");
+                if (output.Length != entry.Length) throw new InvalidDataException(Strings.Get("Archive_ZipEntryIncomplete"));
                 await output.FlushAsync(token);
                 output.Flush(true);
             }
         }
         var inventory = await InventoryAsync(staging, token);
         if (inventory.Count == 0 || TreeHash(inventory) != version.TreeHash)
-            throw new InvalidDataException("Conteúdo extraído não corresponde ao inventário publicado.");
-        if (gameIsRunning()) throw new IOException("O Valheim abriu durante a preparação. Instalação cancelada.");
+            throw new InvalidDataException(Strings.Get("Archive_ExtractMismatch"));
+        if (gameIsRunning()) throw new IOException(Strings.Get("Archive_GameOpenedDuringPrep"));
         await DurableJson.WriteAsync(InstallJournal, new InstallRecord(worldPath, staging, backup), token);
         // From here, finish the two renames without cancellation. Recovery handles a process/OS crash.
         if (Directory.Exists(worldPath)) Directory.Move(worldPath, backup);
         try
         {
-            if (gameIsRunning()) throw new IOException("O Valheim abriu durante a instalação.");
+            if (gameIsRunning()) throw new IOException(Strings.Get("Archive_GameOpenedDuringInstall"));
             Directory.Move(staging, worldPath);
         }
         catch
@@ -173,13 +174,13 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
     {
         var record = await DurableJson.ReadAsync<InstallRecord>(InstallJournal, token);
         if (record is null) return;
-        if (gameIsRunning()) throw new IOException("Feche o Valheim para recuperar uma instalação interrompida.");
+        if (gameIsRunning()) throw new IOException(Strings.Get("Archive_CloseGameRecover"));
         worldPath = Path.GetFullPath(worldPath);
         var parent = Path.GetDirectoryName(worldPath)!;
         var workspaceParent = Path.GetDirectoryName(parent)!;
         if (!string.Equals(record.Target, worldPath, PathComparison) ||
             !OwnedWorkspace(record.Staging, record.Backup, workspaceParent))
-            throw new InvalidDataException("Diário de instalação pertence a outro mundo.");
+            throw new InvalidDataException(Strings.Get("Archive_WrongWorldJournal"));
         RejectReparseAncestors(record.Target);
         RejectReparseAncestors(record.Staging);
         RejectReparseAncestors(record.Backup);
@@ -187,7 +188,7 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
         {
             if (Directory.Exists(record.Backup)) Directory.Move(record.Backup, record.Target);
             else if (Directory.Exists(record.Staging)) Directory.Move(record.Staging, record.Target);
-            else throw new IOException("Arquivos de recuperação não encontrados.");
+            else throw new IOException(Strings.Get("Archive_RecoveryFilesMissing"));
         }
         else if (Directory.Exists(record.Backup)) await PreserveBackupAsync(record.Backup, token);
         var workspace = Path.GetDirectoryName(record.Staging)!;
@@ -198,10 +199,10 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
     {
         var source = Path.GetFullPath(snapshot.Path);
         if (!source.StartsWith(root + Path.DirectorySeparatorChar, PathComparison))
-            throw new InvalidDataException("Arquivo fora da área de recuperação do perfil.");
+            throw new InvalidDataException(Strings.Get("Archive_OutsideProfileRecovery"));
         await using (var file = File.OpenRead(source))
             if (file.Length != snapshot.Version.Size || Convert.ToHexString(await SHA256.HashDataAsync(file, token)) != snapshot.Version.Sha256)
-                throw new InvalidDataException("Cópia local alterada ou incompleta.");
+                throw new InvalidDataException(Strings.Get("Archive_LocalCopyChanged"));
         Directory.CreateDirectory(recoveryRoot);
         var destination = Path.Combine(recoveryRoot, $"{snapshot.Version.CreatedAt:yyyyMMddTHHmmssfffZ}-{snapshot.Version.Id}.zip");
         if (!string.Equals(Path.GetFullPath(snapshot.Path), Path.GetFullPath(destination), PathComparison))
@@ -234,29 +235,29 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
     private static void ValidateRelativePath(string name)
     {
         if (string.IsNullOrEmpty(name) || name.Contains('\\') || name.StartsWith('/') || Path.IsPathRooted(name))
-            throw new InvalidDataException("Caminho ZIP inválido.");
+            throw new InvalidDataException(Strings.Get("Archive_BadZipPath"));
         foreach (var part in name.Split('/'))
         {
             if (part is "" or "." or ".." || part.EndsWith('.') || part.EndsWith(' ') ||
                 part.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || part.Contains(':'))
-                throw new InvalidDataException("Nome de arquivo inválido.");
+                throw new InvalidDataException(Strings.Get("Archive_BadFileName"));
             var device = part.Split('.')[0].ToUpperInvariant();
             if (device is "CON" or "PRN" or "AUX" or "NUL" ||
                 device.Length == 4 && (device.StartsWith("COM") || device.StartsWith("LPT")) && char.IsAsciiDigit(device[3]))
-                throw new InvalidDataException("Nome de dispositivo não permitido.");
+                throw new InvalidDataException(Strings.Get("Archive_DeviceName"));
         }
     }
     private static void RejectReparseAncestors(string path)
     {
         for (var current = Path.GetFullPath(path); current is not null; current = Path.GetDirectoryName(current))
             if ((Directory.Exists(current) || File.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException("Links/junctions não são suportados para arquivos de mundo.");
+                throw new InvalidDataException(Strings.Get("Archive_SymlinksUnsupported"));
     }
     private static IEnumerable<string> EnumerateSafe(string directory)
     {
         foreach (var path in Directory.EnumerateFileSystemEntries(directory).Order(StringComparer.Ordinal))
         {
-            if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException("Link no mundo não suportado.");
+            if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException(Strings.Get("Archive_WorldSymlink"));
             yield return path;
             if (Directory.Exists(path)) foreach (var child in EnumerateSafe(path)) yield return child;
         }
@@ -264,7 +265,7 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
     private static async Task<List<FileDigest>> InventoryAsync(string directory, CancellationToken token)
     {
         var entries = EnumerateSafe(directory).Take(MaxEntries + 1).ToArray();
-        if (entries.Length > MaxEntries) throw new InvalidDataException($"Mundo excede o limite de {MaxEntries:N0} entradas.");
+        if (entries.Length > MaxEntries) throw new InvalidDataException(Strings.Format("Archive_TooManyEntries", MaxEntries));
         return await InventoryAsync(directory, entries, token);
     }
     private static async Task<List<FileDigest>> InventoryAsync(string directory, IEnumerable<string> entries, CancellationToken token)
@@ -284,7 +285,7 @@ public sealed class WorldArchive(string dataRoot, string profileId, string? reco
     {
         var worldPrefix = worldPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
         if (string.Equals(root, worldPath, PathComparison) || root.StartsWith(worldPrefix, PathComparison))
-            throw new InvalidDataException("A pasta de dados do aplicativo não pode ficar dentro da pasta do mundo.");
+            throw new InvalidDataException(Strings.Get("Archive_DataRootInsideWorld"));
     }
     private static string TreeHash(IEnumerable<FileDigest> files) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
         string.Join("\n", files.OrderBy(f => f.Name, StringComparer.Ordinal).Select(f => $"{f.Name}\0{f.Size}\0{f.Hash}")))));

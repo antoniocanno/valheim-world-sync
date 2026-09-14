@@ -1,3 +1,4 @@
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Infrastructure.Configuration;
 using ValheimWorldSync.Platform.Windows.Credentials;
 
@@ -5,10 +6,46 @@ namespace ValheimWorldSync.Platform.Windows.Configuration;
 
 public sealed record AppSettings
 {
-    public int SchemaVersion { get; init; } = 1;
+    public int SchemaVersion { get; init; } = 2;
     public string PlayerName { get; init; } = Environment.UserName;
     public string? SelectedProfileId { get; init; }
     public int OnboardingVersion { get; init; }
+    public string Language { get; init; } = AppLanguage.Default;
+}
+
+public static class AppLanguage
+{
+    public const string English = "en-US";
+    public const string Portuguese = "pt-BR";
+    public const string Default = English;
+
+    public static bool IsSupported(string? language) =>
+        string.Equals(language, English, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(language, Portuguese, StringComparison.OrdinalIgnoreCase);
+
+    public static string Normalize(string? language)
+    {
+        if (string.IsNullOrWhiteSpace(language)) return Default;
+        var trimmed = language.Trim();
+        if (string.Equals(trimmed, English, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmed, "en", StringComparison.OrdinalIgnoreCase))
+            return English;
+        if (string.Equals(trimmed, Portuguese, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmed, "pt", StringComparison.OrdinalIgnoreCase))
+            return Portuguese;
+        return Default;
+    }
+
+    public static string NormalizeStrict(string? language)
+    {
+        if (string.Equals(language?.Trim(), English, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(language?.Trim(), "en", StringComparison.OrdinalIgnoreCase))
+            return English;
+        if (string.Equals(language?.Trim(), Portuguese, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(language?.Trim(), "pt", StringComparison.OrdinalIgnoreCase))
+            return Portuguese;
+        throw new InvalidDataException(Strings.Get("Error_InvalidLanguage"));
+    }
 }
 
 public sealed record ProfileConnection

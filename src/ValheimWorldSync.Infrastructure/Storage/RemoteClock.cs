@@ -1,5 +1,6 @@
 using Amazon.Runtime;
 using System.Diagnostics;
+using ValheimWorldSync.Core.Localization;
 namespace ValheimWorldSync.Infrastructure.Storage;
 
 // Server Date is sampled by the same HTTP transport used by the S3 SDK.
@@ -15,9 +16,9 @@ internal sealed class RemoteClock : HttpClientFactory
         {
             lock (gate)
             {
-                if (sample is null) throw new IOException("Servidor não forneceu uma referência de horário.");
+                if (sample is null) throw new IOException(Strings.Get("Clock_NoSample"));
                 var elapsed = Stopwatch.GetElapsedTime(timestamp);
-                if (elapsed > TimeSpan.FromMinutes(5)) throw new IOException("Referência de horário expirada.");
+                if (elapsed > TimeSpan.FromMinutes(5)) throw new IOException(Strings.Get("Clock_StaleSample"));
                 return sample.Value + elapsed;
             }
         }

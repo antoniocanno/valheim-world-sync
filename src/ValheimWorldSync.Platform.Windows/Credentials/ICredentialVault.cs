@@ -1,11 +1,13 @@
 namespace ValheimWorldSync.Platform.Windows.Credentials;
 
+using ValheimWorldSync.Core.Localization;
+
 public sealed record R2Credentials(string AccessKeyId, string SecretAccessKey)
 {
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(AccessKeyId) || string.IsNullOrWhiteSpace(SecretAccessKey))
-            throw new InvalidDataException("As credenciais R2 estão incompletas.");
+            throw new InvalidDataException(Strings.Get("Vault_Incomplete"));
     }
 }
 

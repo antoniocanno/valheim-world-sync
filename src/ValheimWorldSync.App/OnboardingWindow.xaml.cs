@@ -1,4 +1,5 @@
 using System.Windows;
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Platform.Windows.Configuration;
 
 namespace ValheimWorldSync.Desktop;
@@ -13,7 +14,7 @@ public partial class OnboardingWindow : Window
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(PlayerBox.Text)) throw new InvalidDataException("Informe o nome do jogador.");
+            if (string.IsNullOrWhiteSpace(PlayerBox.Text)) throw new InvalidDataException(Strings.Get("Onboarding_PlayerRequired"));
             var catalog = await store.LoadAsync();
             await store.SaveSettingsAsync(catalog.Settings with { PlayerName = PlayerBox.Text.Trim() });
             var settings = new SettingsWindow(store, join) { Owner = this };

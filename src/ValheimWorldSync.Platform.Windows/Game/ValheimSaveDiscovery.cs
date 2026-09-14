@@ -1,5 +1,7 @@
 namespace ValheimWorldSync.Platform.Windows.Game;
 
+using ValheimWorldSync.Core.Localization;
+
 public sealed record ValheimSaveStatus(string WorldsLocal, bool PossibleSteamCloud, string? Guidance);
 public static class ValheimSaveDiscovery
 {
@@ -14,7 +16,7 @@ public static class ValheimSaveDiscovery
             Directory.Exists(legacy) && Directory.EnumerateFileSystemEntries(legacy).Any();
         var possible = !hasLocalWorld && cloudIndicator;
         return new(local, possible, possible
-            ? "Possível mundo na Steam Cloud. No Valheim, abra Manage Saves → Worlds, selecione o mundo, use Move to Local e feche o jogo."
+            ? Strings.Get("Guidance_SteamCloud")
             : null);
     }
 }

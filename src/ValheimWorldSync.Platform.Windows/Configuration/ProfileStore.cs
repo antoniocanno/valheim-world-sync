@@ -1,3 +1,4 @@
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Infrastructure.Configuration;
 using ValheimWorldSync.Infrastructure.Recovery;
 using ValheimWorldSync.Platform.Windows.Credentials;
@@ -6,15 +7,18 @@ namespace ValheimWorldSync.Platform.Windows.Configuration;
 
 public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
 {
+    public const string SettingsFileName = "settings.json";
     public string DataRoot { get; } = Path.GetFullPath(dataRoot);
-    public string SettingsPath => Path.Combine(DataRoot, "settings.json");
+    public string SettingsPath => Path.Combine(DataRoot, SettingsFileName);
     public string ProfilesRoot => Path.Combine(DataRoot, "profiles");
 
     public async Task<ProfileCatalog> LoadAsync(CancellationToken token = default)
     {
         Directory.CreateDirectory(DataRoot);
         var settings = await DurableJson.ReadAsync<AppSettings>(SettingsPath, token) ?? new AppSettings();
-        if (!File.Exists(SettingsPath)) await DurableJson.WriteAsync(SettingsPath, settings, token);
+        var migrated = MigrateSettings(settings);
+        if (!File.Exists(SettingsPath) || migrated != settings) await DurableJson.WriteAsync(SettingsPath, migrated, token);
+        settings = migrated;
         ValidateSettings(settings);
         var profiles = new List<WorldProfile>();
         if (Directory.Exists(ProfilesRoot))
@@ -34,6 +38,7 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
 
     public async Task SaveSettingsAsync(AppSettings settings, CancellationToken token = default)
     {
+        settings = settings with { SchemaVersion = 2, Language = AppLanguage.NormalizeStrict(settings.Language) };
         ValidateSettings(settings);
         await DurableJson.WriteAsync(SettingsPath, settings, token);
     }
@@ -45,7 +50,7 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
         local = local with { CredentialTarget = WindowsCredentialVault.TargetFor(id) };
         Validate(id, connection, local);
         var root = Path.Combine(ProfilesRoot, id);
-        if (Directory.Exists(root)) throw new IOException("O perfil local já existe.");
+        if (Directory.Exists(root)) throw new IOException(Strings.Get("Profile_Exists"));
         await vault.WriteAsync(local.CredentialTarget, credentials, token);
         try
         {
@@ -78,23 +83,34 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
     public async Task SelectAsync(string profileId, CancellationToken token = default)
     {
         var catalog = await LoadAsync(token);
-        if (catalog.Profiles.All(candidate => candidate.Id != profileId)) throw new InvalidDataException("Perfil não encontrado.");
+        if (catalog.Profiles.All(candidate => candidate.Id != profileId)) throw new InvalidDataException(Strings.Get("Profile_NotFound"));
         await SaveSettingsAsync(catalog.Settings with { SelectedProfileId = profileId }, token);
     }
 
     public async Task DeleteAsync(WorldProfile profile, CancellationToken token = default)
     {
-        if (File.Exists(Path.Combine(profile.Root, "session.json"))) throw new InvalidDataException("Resolva a sessão deste perfil antes de excluí-lo.");
+        if (File.Exists(Path.Combine(profile.Root, "session.json"))) throw new InvalidDataException(Strings.Get("Profile_PendingSession"));
         await vault.DeleteAsync(profile.Local.CredentialTarget, token);
         if (Directory.Exists(profile.Root)) Directory.Delete(profile.Root, true);
         var settings = (await LoadAsync(token)).Settings;
         if (settings.SelectedProfileId == profile.Id) await SaveSettingsAsync(settings with { SelectedProfileId = null }, token);
     }
 
+    private static AppSettings MigrateSettings(AppSettings settings)
+    {
+        if (settings.SchemaVersion == 1)
+            return settings with { SchemaVersion = 2, Language = AppLanguage.Normalize(settings.Language) };
+        if (settings.SchemaVersion == 2 && !AppLanguage.IsSupported(settings.Language))
+            return settings with { Language = AppLanguage.Default };
+        return settings;
+    }
+
     private static void ValidateSettings(AppSettings settings)
     {
-        if (settings.SchemaVersion != 1 || string.IsNullOrWhiteSpace(settings.PlayerName) || settings.PlayerName.Length > 80)
-            throw new InvalidDataException("Configurações locais inválidas.");
+        if (settings.SchemaVersion != 2 ||
+            string.IsNullOrWhiteSpace(settings.PlayerName) || settings.PlayerName.Length > 80 ||
+            !AppLanguage.IsSupported(settings.Language))
+            throw new InvalidDataException(Strings.Get("Profile_InvalidSettings"));
     }
     private static void Validate(string id, ProfileConnection connection, ProfileLocalSettings local)
     {
@@ -102,7 +118,7 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
             string.IsNullOrWhiteSpace(connection.WorldDisplayName) || string.IsNullOrWhiteSpace(connection.WorldFolderName) ||
             connection.WorldFolderName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || connection.RetentionCount is < 0 or > 1000 ||
             (!string.IsNullOrWhiteSpace(local.SavesRootOverride) && !Path.IsPathFullyQualified(local.SavesRootOverride)))
-            throw new InvalidDataException("Perfil local inválido.");
+            throw new InvalidDataException(Strings.Get("Profile_Invalid"));
         new AppConfiguration
         {
             Endpoint = connection.Endpoint,
@@ -115,6 +131,6 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
             SavesRoot = local.SavesRootOverride ?? ValheimLocations.DefaultWorldsLocal,
             BackupCount = connection.RetentionCount
         }.ValidateRemote();
-        if (connection.RemotePrefix != $"worlds/{connection.WorldId}/") throw new InvalidDataException("Prefixo remoto inválido.");
+        if (connection.RemotePrefix != $"worlds/{connection.WorldId}/") throw new InvalidDataException(Strings.Get("Profile_BadPrefix"));
     }
 }

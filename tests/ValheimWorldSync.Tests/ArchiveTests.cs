@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Infrastructure.Recovery;
 using ValheimWorldSync.Infrastructure.WorldFiles;
 using Xunit;
@@ -78,12 +79,16 @@ public sealed class ArchiveTests : IDisposable
     [Fact]
     public async Task RejectsDataDirectoryNestedInsideWorld()
     {
-        var world = Path.Combine(root, "world");
-        Directory.CreateDirectory(world);
-        await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "data");
-        var archive = new WorldArchive(Path.Combine(world, ".app-data"), "test");
-        var error = await Assert.ThrowsAsync<InvalidDataException>(() => archive.CreateAsync(world));
-        Assert.Contains("dentro da pasta do mundo", error.Message);
+        foreach (var (culture, fragment) in new[] { ("en-US", "inside the world folder"), ("pt-BR", "dentro da pasta do mundo") })
+        using (var _ = new TestCultureScope(culture))
+        {
+            var world = Path.Combine(root, "world-" + culture);
+            Directory.CreateDirectory(world);
+            await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "data");
+            var archive = new WorldArchive(Path.Combine(world, ".app-data"), "test");
+            var error = await Assert.ThrowsAsync<InvalidDataException>(() => archive.CreateAsync(world));
+            Assert.Contains(fragment, error.Message);
+        }
     }
     [Fact]
     public async Task RecoveryPromotesStagingWhenNoPreviousWorldExists()

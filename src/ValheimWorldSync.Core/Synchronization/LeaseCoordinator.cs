@@ -1,12 +1,13 @@
 using ValheimWorldSync.Core.Abstractions;
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Core.Models;
 
 namespace ValheimWorldSync.Core.Synchronization;
 
-public sealed class LeaseLostException() : IOException("A posse do mundo foi perdida.");
-public sealed class WorldBusyException(string player) : Exception($"Mundo em uso por {player}.")
+public sealed class LeaseLostException() : IOException(Strings.Get("Lease_Lost"));
+public sealed class WorldBusyException(string player) : Exception(Strings.Format("Lease_Busy", player))
 { public string Player { get; } = player; }
-public sealed class WorldConflictException() : Exception("Outra versão foi publicada. O progresso local foi preservado.");
+public sealed class WorldConflictException() : Exception(Strings.Get("Lease_ConflictPublished"));
 
 public sealed class LeaseCoordinator(IWorldRepository repository, string worldId, string player, string installationId,
     string worldDisplayName, string worldFolderName, int retentionCount)
@@ -41,7 +42,7 @@ public sealed class LeaseCoordinator(IWorldRepository repository, string worldId
                 if (await repository.TryWriteAsync(updated, snapshot?.ETag, token) is { } written)
                     return written.Manifest;
             }
-            throw new IOException("Muitas alterações concorrentes. Tente novamente.");
+            throw new IOException(Strings.Get("Lease_TooManyChanges"));
         }
         finally { gate.Release(); }
     }
@@ -54,7 +55,7 @@ public sealed class LeaseCoordinator(IWorldRepository repository, string worldId
             if (m.Current?.Id == version.Id) return m; // Reconciliation after a lost response.
             if (m.Current?.Id != baseVersionId) throw new WorldConflictException();
             if (m.Current?.Key == version.Key || m.History.Any(v => v.Key == version.Key) || m.PendingDeletes.Contains(version.Key))
-                throw new InvalidDataException("Uma publicação deve usar uma chave nova.");
+                throw new InvalidDataException(Strings.Get("Lease_NewKeyRequired"));
             return m with { Current = version, History = m.Current is null ? m.History : [m.Current, .. m.History] };
         }, token);
 

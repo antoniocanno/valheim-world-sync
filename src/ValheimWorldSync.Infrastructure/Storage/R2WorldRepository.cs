@@ -5,6 +5,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
 using ValheimWorldSync.Core.Abstractions;
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Core.Models;
 using ValheimWorldSync.Infrastructure.Configuration;
 
@@ -47,9 +48,9 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
             try
             {
                 using var response = await client.GetObjectAsync(bucket, prefix + "lock.json", cancellationToken);
-                if (response.ContentLength > 4 * 1024 * 1024) throw new InvalidDataException("Manifesto grande demais.");
+                if (response.ContentLength > 4 * 1024 * 1024) throw new InvalidDataException(Strings.Get("R2_ManifestTooLarge"));
                 var manifest = await JsonSerializer.DeserializeAsync<WorldManifest>(response.ResponseStream,
-                    AppConfiguration.JsonOptions, cancellationToken) ?? throw new InvalidDataException("Manifesto vazio.");
+                    AppConfiguration.JsonOptions, cancellationToken) ?? throw new InvalidDataException(Strings.Get("R2_EmptyManifest"));
                 manifest.Validate(worldId);
                 return new ManifestSnapshot(manifest, response.ETag);
             }
@@ -90,7 +91,7 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
     public async Task UploadAsync(WorldVersion version, string archivePath, CancellationToken cancellationToken = default, IProgress<TransferProgress>? progress = null)
     {
         CheckKey(version.Key);
-        if (version.Size > 4L * 1024 * 1024 * 1024) throw new InvalidDataException("ZIP excede o limite de 4 GiB.");
+        if (version.Size > 4L * 1024 * 1024 * 1024) throw new InvalidDataException(Strings.Get("Common_ZipTooLarge"));
         var completedAttempt = 1;
         await Retry(async attempt =>
         {
@@ -111,7 +112,7 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
             {
                 var existing = await client.GetObjectMetadataAsync(bucket, prefix + version.Key, cancellationToken);
                 if (existing.ContentLength != version.Size || existing.Metadata["x-amz-meta-sha256"] != version.Sha256)
-                    throw new InvalidDataException("Colisão de versão: objeto existente não corresponde ao snapshot.");
+                    throw new InvalidDataException(Strings.Get("R2_VersionCollision"));
             }
             return true;
         }, TransferDirection.Upload, version.Size, progress, cancellationToken);
@@ -138,7 +139,7 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
             progress?.Report(new(TransferDirection.Download, TransferPhase.Verifying, version.Size, version.Size, attempt, 5));
             await using var verify = File.OpenRead(destination);
             if (verify.Length != version.Size || Convert.ToHexString(await SHA256.HashDataAsync(verify, cancellationToken)) != version.Sha256)
-                throw new InvalidDataException("ZIP remoto não corresponde ao hash/tamanho publicado.");
+                throw new InvalidDataException(Strings.Get("R2_HashMismatch"));
             return true;
         }, TransferDirection.Download, version.Size, progress, cancellationToken);
         progress?.Report(new(TransferDirection.Download, TransferPhase.Completed, version.Size, version.Size, completedAttempt, 5));
@@ -160,16 +161,16 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
             await client.PutObjectAsync(request, cancellationToken); uploaded = true;
             using var response = await client.GetObjectAsync(bucket, key, cancellationToken);
             using var reader = new StreamReader(response.ResponseStream);
-            if (await reader.ReadToEndAsync(cancellationToken) != payload) throw new InvalidDataException("O R2 devolveu conteúdo diferente no teste.");
+            if (await reader.ReadToEndAsync(cancellationToken) != payload) throw new InvalidDataException(Strings.Get("R2_TestMismatch"));
         }
         finally
         {
             if (uploaded) try { await client.DeleteObjectAsync(bucket, key, cancellationToken); }
-                catch when (!cancellationToken.IsCancellationRequested) { throw new IOException("A credencial R2 não possui permissão de exclusão."); }
+                catch when (!cancellationToken.IsCancellationRequested) { throw new IOException(Strings.Get("R2_NoDeletePermission")); }
         }
     }
     private static void CheckKey(string key)
-    { if (!WorldManifest.ValidKey(key)) throw new InvalidDataException("Chave de snapshot inválida."); }
+    { if (!WorldManifest.ValidKey(key)) throw new InvalidDataException(Strings.Get("R2_BadSnapshotKey")); }
     private PutObjectRequest Put(string key) => new()
     {
         BucketName = bucket,

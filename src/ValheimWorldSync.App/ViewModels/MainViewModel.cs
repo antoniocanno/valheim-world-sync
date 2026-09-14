@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Threading;
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Core.Models;
 using ValheimWorldSync.Core.Synchronization;
 using ValheimWorldSync.Infrastructure.Configuration;
@@ -33,9 +34,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private WorldProfile? profile;
     private AppSettings? settings;
     private bool localWork;
-    private string message = "Carregando configuração…";
-    private string statusTitle = "Preparando";
-    private string worldLabel = "MUNDO COMPARTILHADO";
+    private string message = Strings.Get("Main_Loading");
+    private string statusTitle = Strings.Get("Main_Preparing");
+    private string worldLabel = Strings.Get("Main_SharedWorld");
     private double progressPercent;
     private string transferDetails = "";
     private bool hasTransferProgress;
@@ -111,14 +112,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             if (profile is null)
             {
                 configuration = null;
-                WorldLabel = "NENHUM MUNDO CONFIGURADO";
-                ApplyStatus(new(SyncState.Error, "Crie ou importe um perfil em Configuração."));
+                WorldLabel = Strings.Get("Main_NoWorld");
+                ApplyStatus(new(SyncState.Error, Strings.Get("Main_NoProfile")));
                 return;
             }
             var credentials = await profileStore.ReadCredentialsAsync(profile, lifetime.Token)
-                ?? throw new InvalidDataException("As credenciais protegidas deste perfil não foram encontradas.");
+                ?? throw new InvalidDataException(Strings.Get("Main_CredentialsMissing"));
             configuration = profile.ToConfiguration(credentials, settings.PlayerName);
-            WorldLabel = $"{profile.Connection.WorldDisplayName} · pasta: {profile.Connection.WorldFolderName}";
+            WorldLabel = Strings.Format("Main_WorldFolderLabel",
+                profile.Connection.WorldDisplayName, profile.Connection.WorldFolderName);
             CloudGuidance = ValheimSaveDiscovery.Detect(Path.GetDirectoryName(profile.SavesRoot)).Guidance ?? "";
             configuration.Validate();
             var installation = await InstallationIdentity.LoadOrCreateAsync(dataRoot, lifetime.Token);
@@ -161,20 +163,20 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         log?.Write(status.State);
         StatusTitle = status.State switch
         {
-            SyncState.Idle => "Pronto para a próxima partida",
-            SyncState.Checking => "Verificando o mundo",
-            SyncState.Acquiring => "Reservando o mundo",
-            SyncState.Downloading => "Baixando seu mundo",
-            SyncState.Preparing => "Preparando o save",
-            SyncState.Launching => "Abrindo o Valheim",
-            SyncState.Playing => "Boa aventura",
-            SyncState.LocalBackup => "Guardando seu progresso",
-            SyncState.Uploading or SyncState.Publishing or SyncState.Releasing => "Sincronizando",
-            SyncState.InUse => "Já existe um anfitrião",
-            SyncState.Offline => "Sem conexão confirmada",
-            SyncState.Pending => "Sincronização pendente",
-            SyncState.Conflict => "Progresso precisa de atenção",
-            _ => "Verifique a configuração"
+            SyncState.Idle => Strings.Get("Status_Idle"),
+            SyncState.Checking => Strings.Get("Status_Checking"),
+            SyncState.Acquiring => Strings.Get("Status_Acquiring"),
+            SyncState.Downloading => Strings.Get("Status_Downloading"),
+            SyncState.Preparing => Strings.Get("Status_Preparing"),
+            SyncState.Launching => Strings.Get("Status_Launching"),
+            SyncState.Playing => Strings.Get("Status_Playing"),
+            SyncState.LocalBackup => Strings.Get("Status_LocalBackup"),
+            SyncState.Uploading or SyncState.Publishing or SyncState.Releasing => Strings.Get("Status_Syncing"),
+            SyncState.InUse => Strings.Get("Status_InUse"),
+            SyncState.Offline => Strings.Get("Status_Offline"),
+            SyncState.Pending => Strings.Get("Status_Pending"),
+            SyncState.Conflict => Strings.Get("Status_Conflict"),
+            _ => Strings.Get("Status_Unknown")
         };
         Message = status.Message;
         StatusUpdated?.Invoke(status);
@@ -185,10 +187,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         if (!dispatcher.CheckAccess()) { dispatcher.BeginInvoke(() => OnTransferProgress(progress)); return; }
         hasTransferProgress = progress.Phase is not TransferPhase.Completed;
         ProgressPercent = progress.TotalBytes > 0 ? 100d * progress.BytesTransferred / progress.TotalBytes : 0;
-        var action = progress.Direction == TransferDirection.Upload ? "Upload" : "Download";
+        var action = progress.Direction == TransferDirection.Upload ? Strings.Get("Main_TransferUpload") : Strings.Get("Main_TransferDownload");
         TransferDetails = progress.Phase == TransferPhase.RetryWait
-            ? $"{action}: tentativa {progress.Attempt}/{progress.MaxAttempts}; nova tentativa em {progress.RetryDelay?.TotalSeconds:0}s"
-            : $"{action}: {FormatBytes(progress.BytesTransferred)} de {FormatBytes(progress.TotalBytes)} · tentativa {progress.Attempt}/{progress.MaxAttempts}";
+            ? Strings.Format("Main_TransferRetryWait", action, progress.Attempt, progress.MaxAttempts, Math.Round(progress.RetryDelay?.TotalSeconds ?? 0))
+            : Strings.Format("Main_TransferProgress", action, FormatBytes(progress.BytesTransferred), FormatBytes(progress.TotalBytes), progress.Attempt, progress.MaxAttempts);
         Changed(nameof(IsProgressIndeterminate));
     }
     private async Task OpenConfiguration()
@@ -206,22 +208,22 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
     private async Task ImportAsync()
     {
-        if (configuration is null) throw new InvalidDataException("Crie ou importe um perfil antes de publicar um mundo.");
+        if (configuration is null) throw new InvalidDataException(Strings.Get("Main_ImportNoProfile"));
         configuration.ValidateRemote();
-        var dialog = new OpenFolderDialog { Title = "Escolha a pasta completa de um mundo local do Valheim 1.0" };
+        var dialog = new OpenFolderDialog { Title = Strings.Get("Common_WorldFolderTitle") };
         if (dialog.ShowDialog() != true) return;
-        if (profile is not null && File.Exists(Path.Combine(profile.Root, "session.json"))) throw new InvalidDataException("Resolva a sessão pendente antes de alterar o mundo.");
+        if (profile is not null && File.Exists(Path.Combine(profile.Root, "session.json"))) throw new InvalidDataException(Strings.Get("Main_PendingSessionChange"));
         var folder = new DirectoryInfo(dialog.FolderName);
         var destination = configuration.WorldPath;
-        if (MessageBox.Show($"Copiar '{folder.FullName}' para a pasta usada pelo jogo e publicar como primeiro mundo?\n\nDestino local: {destination}\n\nA origem será preservada. Se o destino existir, ele será guardado como backup. O Valheim deve estar fechado.",
-            "Importar mundo", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(Strings.Format("Main_ImportPrompt", folder.FullName, destination),
+            Strings.Get("Main_ImportTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         await InitializeAsync();
         if (engine is not null) await RunEngine(() => engine.ImportAsync(folder.FullName, lifetime.Token));
     }
     private async Task ExportAsync()
     {
-        if (new WindowsGamePlatform().FindProcesses().Count != 0) throw new IOException("Feche o Valheim antes de exportar.");
-        var dialog = new SaveFileDialog { Title = "Exportar progresso para recuperação", Filter = "Snapshot ZIP|*.zip", FileName = $"valheim-recuperacao-{DateTime.Now:yyyyMMdd-HHmmss}.zip" };
+        if (new WindowsGamePlatform().FindProcesses().Count != 0) throw new IOException(Strings.Get("Main_ExportCloseGame"));
+        var dialog = new SaveFileDialog { Title = Strings.Get("Main_ExportTitle"), Filter = "Snapshot ZIP|*.zip", FileName = $"{Strings.Get("Common_ExportFilePrefix")}{DateTime.Now:yyyyMMdd-HHmmss}.zip" };
         if (dialog.ShowDialog() != true) return;
         localWork = true; Refresh();
         try
@@ -234,17 +236,17 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                 var snapshot = session?.Snapshot ?? await archive.CreateAsync(configuration!.WorldPath, lifetime.Token);
                 await archive.VerifyAsync(snapshot, lifetime.Token);
                 if (string.Equals(Path.GetFullPath(dialog.FileName), Path.GetFullPath(snapshot.Path), StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("Escolha um destino fora do snapshot original.");
+                    throw new InvalidDataException(Strings.Get("Main_ExportOutsideSnapshot"));
                 File.Copy(snapshot.Path, dialog.FileName, true);
             }, lifetime.Token);
-            Message = "Progresso exportado. A pendência original continua preservada.";
+            Message = Strings.Get("Main_Exported");
         }
         finally { localWork = false; Refresh(); }
     }
     private async Task UseCloudAsync()
     {
-        if (MessageBox.Show("Guardar uma cópia local e encerrar esta pendência?\n\nO próximo Jogar baixará a versão da nuvem. As alterações locais NÃO serão mescladas. Você poderá recuperar a cópia pela pasta Recuperação.",
-            "Voltar à versão da nuvem", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+        if (MessageBox.Show(Strings.Get("Main_UseCloudPrompt"),
+            Strings.Get("Main_UseCloudTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
             await RunEngine(() => engine!.KeepLocalAndUseCloudAsync(lifetime.Token));
     }
     private AsyncCommand Command(Func<Task> action, Func<bool> canExecute)
@@ -256,7 +258,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private void Error(Exception e)
     {
         ApplyStatus(new(SyncState.Error, e is InvalidDataException or IOException && e is not FileNotFoundException
-            ? e.Message : $"Não foi possível concluir ({e.GetType().Name}). Abra Configuração e verifique os campos."));
+            ? e.Message : Strings.Format("Main_GenericError", e.GetType().Name)));
     }
     private static void OpenShell(string target) { using var process = Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
     private void Refresh()
@@ -273,8 +275,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private async Task ResetRemoteAsync()
     {
         if (profile is null || engine is null) return;
-        if (new WindowsGamePlatform().FindProcesses().Count != 0) throw new IOException("Feche o Valheim antes de reinicializar o mundo.");
-        var source = new OpenFolderDialog { Title = "Escolha a pasta completa que substituirá o mundo remoto" };
+        if (new WindowsGamePlatform().FindProcesses().Count != 0) throw new IOException(Strings.Get("Main_ResetCloseGame"));
+        var source = new OpenFolderDialog { Title = Strings.Get("Main_ResetFolderTitle") };
         if (source.ShowDialog() != true) return;
         if (new ConfirmResetWindow(profile.Connection.WorldDisplayName) { Owner = Application.Current.MainWindow }.ShowDialog() != true) return;
         await RunEngine(() => engine.ResetRemoteAsync(source.FolderName, lifetime.Token));

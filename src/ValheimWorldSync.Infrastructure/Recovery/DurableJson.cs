@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Infrastructure.Configuration;
 namespace ValheimWorldSync.Infrastructure.Recovery;
 
@@ -21,6 +22,6 @@ public static class DurableJson
         if (!File.Exists(path)) return default;
         await using var stream = File.OpenRead(path);
         return await JsonSerializer.DeserializeAsync<T>(stream, AppConfiguration.JsonOptions, token)
-            ?? throw new InvalidDataException("Diário local inválido.");
+            ?? throw new InvalidDataException(Strings.Get("Journal_Invalid"));
     }
 }

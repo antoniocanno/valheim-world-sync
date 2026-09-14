@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Windows;
 using System.Windows.Forms;
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Core.Models;
 using ValheimWorldSync.Desktop.ViewModels;
 namespace ValheimWorldSync.Desktop.Tray;
@@ -14,11 +15,11 @@ public sealed class TrayController : IDisposable
     public TrayController(MainWindow window, MainViewModel model, Action exit)
     {
         menu = new ContextMenuStrip();
-        menu.Items.Add("Abrir Valheim World Sync", null, (_, _) => Show(window));
-        menu.Items.Add("Jogar", null, (_, _) => model.PlayCommand.Execute(null));
-        menu.Items.Add("Tentar sincronizar", null, (_, _) => model.RetryCommand.Execute(null));
+        menu.Items.Add(Strings.Get("Tray_Open"), null, (_, _) => Show(window));
+        menu.Items.Add(Strings.Get("Main_Play"), null, (_, _) => model.PlayCommand.Execute(null));
+        menu.Items.Add(Strings.Get("Main_Retry"), null, (_, _) => model.RetryCommand.Execute(null));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Sair", null, (_, _) => exit());
+        menu.Items.Add(Strings.Get("Tray_Exit"), null, (_, _) => exit());
         var resourceInfo = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/ValheimWorldSync;component/vws.ico", UriKind.Absolute))
             ?? System.Windows.Application.GetResourceStream(new Uri("/vws.ico", UriKind.Relative));
         customIcon = resourceInfo?.Stream is not null
