@@ -7,7 +7,7 @@ using ValheimWorldSync.Infrastructure.Recovery;
 
 namespace ValheimWorldSync.Infrastructure.WorldFiles;
 
-public sealed class WorldArchive(string dataRoot, string? recoveryDirectory = null, string profileId = "legacy") : IWorldArchive
+public sealed class WorldArchive(string dataRoot, string profileId, string? recoveryDirectory = null) : IWorldArchive
 {
     public const long MaxZipBytes = 4L * 1024 * 1024 * 1024;
     public const long MaxExpandedBytes = 32L * 1024 * 1024 * 1024;
@@ -59,7 +59,7 @@ public sealed class WorldArchive(string dataRoot, string? recoveryDirectory = nu
         }
         var after = await InventoryAsync(worldPath, token);
         if (TreeHash(before) != TreeHash(after)) throw new IOException("O save mudou durante o backup; tentativa adiada.");
-        if (new FileInfo(temporary).Length > MaxZipBytes) throw new InvalidDataException("ZIP excede o limite de 4 GiB da v1.");
+        if (new FileInfo(temporary).Length > MaxZipBytes) throw new InvalidDataException("ZIP excede o limite de 4 GiB.");
         // Validate the bytes actually captured, not just the source before/after.
         using (var captured = ZipFile.OpenRead(temporary))
         {
@@ -178,7 +178,7 @@ public sealed class WorldArchive(string dataRoot, string? recoveryDirectory = nu
         var parent = Path.GetDirectoryName(worldPath)!;
         var workspaceParent = Path.GetDirectoryName(parent)!;
         if (!string.Equals(record.Target, worldPath, PathComparison) ||
-            !OwnedWorkspace(record.Staging, record.Backup, workspaceParent, parent))
+            !OwnedWorkspace(record.Staging, record.Backup, workspaceParent))
             throw new InvalidDataException("Diário de instalação pertence a outro mundo.");
         RejectReparseAncestors(record.Target);
         RejectReparseAncestors(record.Staging);
@@ -211,28 +211,10 @@ public sealed class WorldArchive(string dataRoot, string? recoveryDirectory = nu
         await DurableJson.WriteAsync(Path.ChangeExtension(destination, ".json"), entry, token);
         return entry;
     }
-    public async Task<int> MigrateLegacyArtifactsAsync(string savesRoot, string player, CancellationToken token = default)
-    {
-        if (!Directory.Exists(savesRoot) || File.Exists(InstallJournal)) return 0;
-        var migrated = 0;
-        foreach (var directory in Directory.EnumerateDirectories(savesRoot, ".vws-*", SearchOption.TopDirectoryOnly))
-        {
-            var name = Path.GetFileName(directory);
-            var origin = name.StartsWith(".vws-backup-", StringComparison.Ordinal) ? "backup-legado" :
-                name.StartsWith(".vws-staging-", StringComparison.Ordinal) ? "staging-legado" : null;
-            var prefix = origin == "backup-legado" ? ".vws-backup-" : ".vws-staging-";
-            if (origin is null || !Guid.TryParseExact(name[prefix.Length..], "N", out _)) continue;
-            var snapshot = await CreateAsync(directory, token);
-            await PreserveAsync(snapshot, player, origin, token);
-            File.Delete(snapshot.Path); Directory.Delete(directory, true); migrated++;
-        }
-        return migrated;
-    }
-    private static bool OwnedWorkspace(string staging, string backup, string parent, string legacyParent)
+    private static bool OwnedWorkspace(string staging, string backup, string parent)
     {
         var workspace = Path.GetDirectoryName(Path.GetFullPath(staging));
-        if (workspace is null || !(string.Equals(Path.GetDirectoryName(workspace), parent, PathComparison) ||
-                string.Equals(Path.GetDirectoryName(workspace), legacyParent, PathComparison)) ||
+        if (workspace is null || !string.Equals(Path.GetDirectoryName(workspace), parent, PathComparison) ||
             !Path.GetFileName(workspace).StartsWith(".vws-work-", StringComparison.Ordinal) ||
             !Guid.TryParseExact(Path.GetFileName(workspace)[10..], "N", out _)) return false;
         return string.Equals(staging, Path.Combine(workspace, "staging"), PathComparison) &&

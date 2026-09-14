@@ -1,10 +1,10 @@
+using Microsoft.Win32;
 using System.Windows;
 using ValheimWorldSync.Infrastructure.Configuration;
 using ValheimWorldSync.Infrastructure.Storage;
 using ValheimWorldSync.Platform.Windows.Configuration;
 using ValheimWorldSync.Platform.Windows.Credentials;
 using ValheimWorldSync.Platform.Windows.Invitations;
-using Microsoft.Win32;
 
 namespace ValheimWorldSync.Desktop;
 
@@ -30,7 +30,7 @@ public partial class SettingsWindow : Window
 
     private async Task Reload()
     {
-        catalog = await store.LoadOrMigrateAsync();
+        catalog = await store.LoadAsync();
         PlayerBox.Text = catalog.Settings.PlayerName;
         ProfilesBox.ItemsSource = catalog.Profiles;
         ProfilesBox.SelectedItem = catalog.Selected ?? catalog.Profiles.FirstOrDefault();
@@ -100,13 +100,18 @@ public partial class SettingsWindow : Window
         var worldId = WorldIdBox.Text.Trim();
         var connection = new ProfileConnection
         {
-            Endpoint = EndpointBox.Text.Trim(), Bucket = BucketBox.Text.Trim(), WorldId = worldId,
+            Endpoint = EndpointBox.Text.Trim(),
+            Bucket = BucketBox.Text.Trim(),
+            WorldId = worldId,
             RemotePrefix = selected?.Connection.RemotePrefix ?? $"worlds/{worldId}/",
-            WorldDisplayName = DisplayBox.Text.Trim(), WorldFolderName = FolderBox.Text.Trim(), RetentionCount = retention
+            WorldDisplayName = DisplayBox.Text.Trim(),
+            WorldFolderName = FolderBox.Text.Trim(),
+            RetentionCount = retention
         };
         var local = new ProfileLocalSettings
         {
-            CredentialTarget = selected?.Local.CredentialTarget ?? Guid.Empty.ToString(), Alias = AliasBox.Text.Trim(),
+            CredentialTarget = selected?.Local.CredentialTarget ?? Guid.Empty.ToString(),
+            Alias = AliasBox.Text.Trim(),
             SavesRootOverride = string.IsNullOrWhiteSpace(SavesBox.Text) ? null : SavesBox.Text.Trim()
         };
         R2Credentials? credentials = string.IsNullOrEmpty(SecretBox.Password) ? null : new(AccessBox.Text.Trim(), SecretBox.Password);
@@ -153,7 +158,9 @@ public partial class SettingsWindow : Window
         }
         await store.SaveSettingsAsync(catalog.Settings with
         {
-            PlayerName = PlayerBox.Text.Trim(), SelectedProfileId = profile.Id, OnboardingVersion = 1
+            PlayerName = PlayerBox.Text.Trim(),
+            SelectedProfileId = profile.Id,
+            OnboardingVersion = 1
         });
         DialogResult = true;
     });
@@ -186,8 +193,16 @@ public partial class SettingsWindow : Window
         await Run(async () =>
         {
             var p = await new InvitationCodec().ReadAsync(dialog.FileName, password);
-            var c = new ProfileConnection { Endpoint = p.Endpoint, Bucket = p.Bucket, RemotePrefix = p.RemotePrefix, WorldId = p.WorldId,
-                WorldDisplayName = p.WorldDisplayName, WorldFolderName = p.WorldFolderName, RetentionCount = p.RetentionCount };
+            var c = new ProfileConnection
+            {
+                Endpoint = p.Endpoint,
+                Bucket = p.Bucket,
+                RemotePrefix = p.RemotePrefix,
+                WorldId = p.WorldId,
+                WorldDisplayName = p.WorldDisplayName,
+                WorldFolderName = p.WorldFolderName,
+                RetentionCount = p.RetentionCount
+            };
             using (var repository = new R2WorldRepository(ToConfiguration(c, p.Credentials), c.RemotePrefix)) await repository.TestConnectionAsync();
             var profile = await store.CreateAsync(c, new ProfileLocalSettings { CredentialTarget = "pending", Alias = p.WorldDisplayName }, p.Credentials);
             await store.SaveSettingsAsync(catalog.Settings with { SelectedProfileId = profile.Id, PlayerName = PlayerBox.Text.Trim(), OnboardingVersion = 1 });
@@ -207,8 +222,14 @@ public partial class SettingsWindow : Window
     }
     private static AppConfiguration ToConfiguration(ProfileConnection c, R2Credentials k) => new()
     {
-        Endpoint = c.Endpoint, Bucket = c.Bucket, AccessKeyId = k.AccessKeyId, SecretAccessKey = k.SecretAccessKey,
-        Player = "local", WorldId = c.WorldId, WorldFolderName = c.WorldFolderName,
-        SavesRoot = ValheimLocations.DefaultWorldsLocal, BackupCount = c.RetentionCount
+        Endpoint = c.Endpoint,
+        Bucket = c.Bucket,
+        AccessKeyId = k.AccessKeyId,
+        SecretAccessKey = k.SecretAccessKey,
+        Player = "local",
+        WorldId = c.WorldId,
+        WorldFolderName = c.WorldFolderName,
+        SavesRoot = ValheimLocations.DefaultWorldsLocal,
+        BackupCount = c.RetentionCount
     };
 }

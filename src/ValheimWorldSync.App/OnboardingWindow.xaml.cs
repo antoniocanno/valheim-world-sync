@@ -14,7 +14,7 @@ public partial class OnboardingWindow : Window
         try
         {
             if (string.IsNullOrWhiteSpace(PlayerBox.Text)) throw new InvalidDataException("Informe o nome do jogador.");
-            var catalog = await store.LoadOrMigrateAsync();
+            var catalog = await store.LoadAsync();
             await store.SaveSettingsAsync(catalog.Settings with { PlayerName = PlayerBox.Text.Trim() });
             var settings = new SettingsWindow(store, join) { Owner = this };
             if (settings.ShowDialog() == true) DialogResult = true;

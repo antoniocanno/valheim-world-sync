@@ -1,15 +1,15 @@
-using System.IO;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using ValheimWorldSync;
-using ValheimWorldSync.Desktop;
 using ValheimWorldSync.Core.Models;
+using ValheimWorldSync.Desktop;
+using ValheimWorldSync.Desktop.ViewModels;
 using ValheimWorldSync.Platform.Windows.Configuration;
 using ValheimWorldSync.Platform.Windows.Credentials;
-using ValheimWorldSync.Desktop.ViewModels;
 
 internal static class Program
 {
@@ -54,7 +54,7 @@ internal static class Program
         Render(settings, Path.Combine(output, "settings-bottom.png"), 684, 440);
         settings.Close();
         var profile = new WorldProfile("preview", output,
-            new ProfileConnection { Endpoint = "https://example.invalid", Bucket = "preview", WorldId = "preview", WorldDisplayName = "Midgard", WorldFolderName = "Midgard" },
+            new ProfileConnection { Endpoint = "https://example.invalid", Bucket = "preview", RemotePrefix = "worlds/preview/", WorldId = "preview", WorldDisplayName = "Midgard", WorldFolderName = "Midgard" },
             new ProfileLocalSettings { CredentialTarget = "preview", Alias = "Midgard" });
         var recovery = new RecoveryWindow(profile, output);
         ((System.Windows.Controls.DataGrid)recovery.FindName("EntriesGrid")).ItemsSource = new[] {
@@ -110,7 +110,7 @@ internal static class Program
         public string TransferDetails => "";
         public string CloudGuidance => "";
         public IReadOnlyList<WorldProfile> AvailableProfiles { get; } = [new WorldProfile("preview", "preview",
-            new ProfileConnection { Endpoint = "https://example.invalid", Bucket = "preview", WorldId = "preview", WorldDisplayName = "Midgard", WorldFolderName = "Midgard" },
+            new ProfileConnection { Endpoint = "https://example.invalid", Bucket = "preview", RemotePrefix = "worlds/preview/", WorldId = "preview", WorldDisplayName = "Midgard", WorldFolderName = "Midgard" },
             new ProfileLocalSettings { CredentialTarget = "preview", Alias = "XARABASKA" })];
         public WorldProfile? ActiveProfile { get => AvailableProfiles[0]; set { } }
         public AsyncCommand ResetCommand => commands.ResetCommand;

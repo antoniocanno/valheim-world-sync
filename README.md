@@ -24,9 +24,9 @@ Os dados ficam em `%LOCALAPPDATA%\ValheimWorldSync`:
 - `profiles/<id>/session.json`: sessão durável do perfil;
 - `recovery/<id>`: ZIPs verificados e metadados de recuperação.
 
-Access Key ID e Secret Access Key ficam no Windows Credential Manager sob `ValheimWorldSync/profile/<id>/r2`. A migração do antigo `config.json` é automática: o arquivo legado só é removido depois de gravar e reler a credencial protegida e concluir os novos arquivos.
+Access Key ID e Secret Access Key ficam no Windows Credential Manager sob `ValheimWorldSync/profile/<id>/r2`.
 
-Vários perfis podem compartilhar um bucket. Novos mundos usam `worlds/<worldId>/`; perfis legados preservam o prefixo vazio para não mover objetos existentes.
+Vários perfis podem compartilhar um bucket. Cada mundo usa `worlds/<worldId>/` como prefixo remoto.
 
 ## Concorrência, recuperação e reset
 
@@ -34,7 +34,7 @@ Vários perfis podem compartilhar um bucket. Novos mundos usam `worlds/<worldId>
 - Até cinco tentativas com backoff; a UI mostra bytes, tamanho total, tentativa e espera.
 - ZIP imutável publicado antes da troca CAS do manifesto. Perder a lease preserva o progresso local.
 - Staging fica em `.vws-work-*` no diretório pai de `worlds_local`, mantendo os renomes no mesmo volume sem aparecer no seletor do jogo.
-- O mundo substituído é compactado e verificado em `recovery/<perfil>`; artefatos legados `.vws-backup-*` e `.vws-staging-*` também são migrados.
+- O mundo substituído é compactado e verificado em `recovery/<perfil>`.
 - **Recuperação** lista data, jogador, tamanho e origem, com exportação, restauração local e exclusão explícita.
 - **Voltar à nuvem** preserva o progresso divergente antes de limpar a pendência.
 - **Reinicializar remoto** exige Valheim fechado, lease exclusiva, checkbox e digitação do nome exato. O remoto anterior é baixado para recuperação e permanece no histórico antes da publicação CAS.
@@ -43,9 +43,9 @@ Não há mesclagem de mundos. Qualquer integrante com credencial de escrita pode
 
 ## Protocolo e limites
 
-O manifesto `lock.json` aceita schemas v1 e v2. O v2 publica nome exibido, pasta canônica, retenção e autor das novas versões. A atualização ocorre somente com lease e CAS. Snapshots ficam em `backups/<timestamp>-<id>.zip` dentro do prefixo do mundo.
+O manifesto `lock.json` segue o schema v2 com nome exibido, pasta canônica, retenção e autor das novas versões. A atualização ocorre somente com lease e CAS. Snapshots ficam em `backups/<timestamp>-<id>.zip` dentro do prefixo do mundo.
 
-Limites atuais: ZIP de 4 GiB, conteúdo expandido de 32 GiB e 500 mil entradas. Links, junctions, dispositivos Windows e caminhos ZIP inseguros são rejeitados. Personagens, mods, conversão de saves legados e servidor dedicado ficam fora do escopo.
+Limites atuais: ZIP de 4 GiB, conteúdo expandido de 32 GiB e 500 mil entradas. Links, junctions, dispositivos Windows e caminhos ZIP inseguros são rejeitados. Personagens, mods, conversão de saves e servidor dedicado ficam fora do escopo.
 
 ## Desenvolvimento
 

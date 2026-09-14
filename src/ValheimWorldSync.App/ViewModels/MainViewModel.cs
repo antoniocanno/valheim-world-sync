@@ -1,18 +1,18 @@
+using Microsoft.Win32;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Threading;
-using Microsoft.Win32;
 using ValheimWorldSync.Core.Models;
 using ValheimWorldSync.Core.Synchronization;
 using ValheimWorldSync.Infrastructure.Configuration;
 using ValheimWorldSync.Infrastructure.Recovery;
 using ValheimWorldSync.Infrastructure.Storage;
 using ValheimWorldSync.Infrastructure.WorldFiles;
-using ValheimWorldSync.Platform.Windows.Game;
 using ValheimWorldSync.Platform.Windows.Configuration;
 using ValheimWorldSync.Platform.Windows.Credentials;
+using ValheimWorldSync.Platform.Windows.Game;
 
 namespace ValheimWorldSync.Desktop.ViewModels;
 
@@ -48,13 +48,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public double ProgressPercent { get => progressPercent; private set { progressPercent = value; Changed(); } }
     public string TransferDetails { get => transferDetails; private set { transferDetails = value; Changed(); } }
     public bool IsProgressIndeterminate => IsWorking && !hasTransferProgress;
-    public IReadOnlyList<WorldProfile> AvailableProfiles { get => availableProfiles; private set { availableProfiles=value; Changed(); } }
+    public IReadOnlyList<WorldProfile> AvailableProfiles { get => availableProfiles; private set { availableProfiles = value; Changed(); } }
     public WorldProfile? ActiveProfile
     {
         get => activeProfile;
-        set { if(value is not null && value.Id!=activeProfile?.Id && !IsWorking) _=SelectProfileAsync(value); }
+        set { if (value is not null && value.Id != activeProfile?.Id && !IsWorking) _ = SelectProfileAsync(value); }
     }
-    public string CloudGuidance { get => cloudGuidance; private set { cloudGuidance=value; Changed(); } }
+    public string CloudGuidance { get => cloudGuidance; private set { cloudGuidance = value; Changed(); } }
     public bool IsWorking => localWork || engine?.IsBusy == true;
     public bool CanExit => !IsWorking && !(profile is not null && File.Exists(Path.Combine(profile.Root, "session.json")) && new WindowsGamePlatform().FindProcesses().Count != 0);
     public SyncState State { get; private set; } = SyncState.Idle;
@@ -98,11 +98,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         try
         {
             repository?.Dispose(); repository = null; engine = null;
-            var catalog = await profileStore.LoadOrMigrateAsync(lifetime.Token);
+            var catalog = await profileStore.LoadAsync(lifetime.Token);
             if (interactive && catalog.Profiles.Count == 0 && catalog.Settings.OnboardingVersion == 0)
             {
                 var onboarding = new OnboardingWindow(profileStore, catalog.Settings.PlayerName) { Owner = Application.Current.MainWindow };
-                if (onboarding.ShowDialog() == true) catalog = await profileStore.LoadOrMigrateAsync(lifetime.Token);
+                if (onboarding.ShowDialog() == true) catalog = await profileStore.LoadAsync(lifetime.Token);
             }
             settings = catalog.Settings;
             profile = catalog.Selected;
@@ -117,7 +117,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             }
             var credentials = await profileStore.ReadCredentialsAsync(profile, lifetime.Token)
                 ?? throw new InvalidDataException("As credenciais protegidas deste perfil não foram encontradas.");
-            configuration = profile.ToLegacyConfiguration(credentials, settings.PlayerName);
+            configuration = profile.ToConfiguration(credentials, settings.PlayerName);
             WorldLabel = $"{profile.Connection.WorldDisplayName} · pasta: {profile.Connection.WorldFolderName}";
             CloudGuidance = ValheimSaveDiscovery.Detect(Path.GetDirectoryName(profile.SavesRoot)).Guidance ?? "";
             configuration.Validate();
@@ -125,7 +125,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             log = new StatusLog(profile.Root);
             repository = new(configuration, profile.Connection.RemotePrefix);
             var game = new PollingGameSession(new WindowsGamePlatform());
-            worldArchive = new WorldArchive(profile.Root, Path.Combine(dataRoot, "recovery", profile.Id), profile.Id);
+            worldArchive = new WorldArchive(profile.Root, profile.Id, Path.Combine(dataRoot, "recovery", profile.Id));
             engine = new(repository, worldArchive, new FileSessionJournal(profile.Root), game,
                 new(configuration.WorldId, configuration.WorldPath, configuration.Endpoint.TrimEnd('/') + "/" + configuration.Bucket,
                     profile.Root, configuration.Player, installation.Id, configuration.BackupCount,
@@ -135,15 +135,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
         catch (Exception e) { Error(e); }
         finally { localWork = false; Refresh(); timer.Start(); }
-        if (engine is not null)
-        {
-            await RunEngine(() => engine.RecoverAsync(lifetime.Token));
-            if (new WindowsGamePlatform().FindProcesses().Count == 0 && worldArchive is not null && profile is not null && settings is not null)
-            {
-                try { await worldArchive.MigrateLegacyArtifactsAsync(profile.SavesRoot, settings.PlayerName, lifetime.Token); }
-                catch (Exception exception) { Error(exception); }
-            }
-        }
+        if (engine is not null) await RunEngine(() => engine.RecoverAsync(lifetime.Token));
     }
     private async void OnTimer(object? sender, EventArgs args)
     {
@@ -210,7 +202,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private async Task SelectProfileAsync(WorldProfile selected)
     {
         try { await profileStore.SelectAsync(selected.Id, lifetime.Token); await InitializeAsync(); }
-        catch(Exception exception) { Error(exception); }
+        catch (Exception exception) { Error(exception); }
     }
     private async Task ImportAsync()
     {
@@ -220,13 +212,6 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         if (dialog.ShowDialog() != true) return;
         if (profile is not null && File.Exists(Path.Combine(profile.Root, "session.json"))) throw new InvalidDataException("Resolva a sessão pendente antes de alterar o mundo.");
         var folder = new DirectoryInfo(dialog.FolderName);
-        if (string.IsNullOrWhiteSpace(configuration.WorldFolderName))
-        {
-            configuration = configuration with { WorldFolderName = folder.Name };
-            configuration.Validate();
-            profile = profile! with { Connection = profile.Connection with { WorldFolderName = folder.Name, WorldDisplayName = folder.Name } };
-            await DurableJson.WriteAsync(Path.Combine(profile.Root, "connection.json"), profile.Connection);
-        }
         var destination = configuration.WorldPath;
         if (MessageBox.Show($"Copiar '{folder.FullName}' para a pasta usada pelo jogo e publicar como primeiro mundo?\n\nDestino local: {destination}\n\nA origem será preservada. Se o destino existir, ele será guardado como backup. O Valheim deve estar fechado.",
             "Importar mundo", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
@@ -245,7 +230,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             {
                 var journal = new FileSessionJournal(profile!.Root);
                 var session = await journal.ReadAsync(lifetime.Token);
-                var archive = new WorldArchive(profile.Root, Path.Combine(dataRoot, "recovery", profile.Id), profile.Id);
+                var archive = new WorldArchive(profile.Root, profile.Id, Path.Combine(dataRoot, "recovery", profile.Id));
                 var snapshot = session?.Snapshot ?? await archive.CreateAsync(configuration!.WorldPath, lifetime.Token);
                 await archive.VerifyAsync(snapshot, lifetime.Token);
                 if (string.Equals(Path.GetFullPath(dialog.FileName), Path.GetFullPath(snapshot.Path), StringComparison.OrdinalIgnoreCase))

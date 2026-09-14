@@ -3,9 +3,9 @@
 ## Automatizada
 
 - CAS, ETag antigo, lease expirada, resposta perdida e versão-base concorrente.
-- Manifestos v1/v2, prefixos por mundo e autor de versões.
-- Snapshot completo, segurança ZIP, staging fora de `worlds_local`, crash e migração de artefatos legados.
-- Migração da configuração sem segredo, isolamento entre perfis e descoberta do save padrão.
+- Manifesto v2, prefixos por mundo e autor de versões.
+- Snapshot completo, segurança ZIP, staging fora de `worlds_local` e crash.
+- Isolamento entre perfis e descoberta do save padrão.
 - Convite cifrado, senha errada, adulteração e ausência de segredo em texto simples.
 - Upload, download, progresso, retry e teste R2 descartável.
 - Importação, jogo, conflito, recuperação, retenção e reset preservando a versão anterior.

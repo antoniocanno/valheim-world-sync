@@ -31,10 +31,14 @@ internal static class StartupSmoke
         using (var file = File.Create(Path.Combine(output, "startup.png"))) encoder.Save(file);
         await File.WriteAllTextAsync(Path.Combine(output, "result.json"), JsonSerializer.Serialize(new
         {
-            success = true, framework = RuntimeInformation.FrameworkDescription,
+            success = true,
+            framework = RuntimeInformation.FrameworkDescription,
             architecture = RuntimeInformation.ProcessArchitecture.ToString(),
-            executable = Environment.ProcessPath, model.StatusTitle, model.CanExit,
-            networkAccess = false, gameLaunched = false
+            executable = Environment.ProcessPath,
+            model.StatusTitle,
+            model.CanExit,
+            networkAccess = false,
+            gameLaunched = false
         }, new JsonSerializerOptions { WriteIndented = true }));
         window.Close();
     }

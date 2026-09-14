@@ -22,7 +22,7 @@ public sealed class EngineTests : IDisposable
         Directory.CreateDirectory(world);
         File.WriteAllText(Path.Combine(world, "chunk"), "initial");
         journal = new(Path.Combine(root, "app"));
-        archive = new(Path.Combine(root, "app"));
+        archive = new(Path.Combine(root, "app"), "test");
         engine = new(repo, archive, journal, game, new("world", world, "test", Path.Combine(root, "app"), "A", "a"), time);
     }
     [Fact]
@@ -61,7 +61,7 @@ public sealed class EngineTests : IDisposable
         {
             await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "local progress");
             repo.UtcNow += TimeSpan.FromSeconds(183);
-            var other = new LeaseCoordinator(repo, "world", "B", "b");
+            var other = new LeaseCoordinator(repo, "world", "B", "b", "Midgard", "Midgard", 10);
             var manifest = await other.AcquireAsync("b");
             await other.PublishAsync("b", manifest.Current!.Id, LeaseTests.Version("other"));
             await other.ReleaseAsync("b");
@@ -93,8 +93,11 @@ public sealed class EngineTests : IDisposable
     {
         await journal.WriteAsync(new()
         {
-            SessionId = "session", WorldId = "world", WorldPath = world,
-            RepositoryIdentity = "test", Stage = SessionStage.Launching
+            SessionId = "session",
+            WorldId = "world",
+            WorldPath = world,
+            RepositoryIdentity = "test",
+            Stage = SessionStage.Launching
         });
         await engine.RecoverAsync();
         Assert.Equal(SyncState.Conflict, engine.Status.State);
@@ -177,8 +180,11 @@ public sealed class EngineTests : IDisposable
         await engine.ImportAsync(world);
         await journal.WriteAsync(new()
         {
-            SessionId = "session", WorldId = "world", WorldPath = world,
-            RepositoryIdentity = "test", Stage = SessionStage.SnapshotPending,
+            SessionId = "session",
+            WorldId = "world",
+            WorldPath = world,
+            RepositoryIdentity = "test",
+            Stage = SessionStage.SnapshotPending,
             BaseVersion = (await repo.ReadAsync())!.Manifest.Current
         });
 

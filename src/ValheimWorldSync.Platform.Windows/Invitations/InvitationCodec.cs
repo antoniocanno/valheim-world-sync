@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using ValheimWorldSync.Platform.Windows.Credentials;
 
@@ -58,7 +57,7 @@ public sealed class InvitationCodec(int iterations = 600_000)
     private static void Validate(InvitationPayload p, string password)
     {
         if (password.Length < 3 || string.IsNullOrWhiteSpace(p.Endpoint) || string.IsNullOrWhiteSpace(p.Bucket) ||
-            string.IsNullOrWhiteSpace(p.WorldId) || (p.RemotePrefix is not "" && p.RemotePrefix != $"worlds/{p.WorldId}/") ||
+            string.IsNullOrWhiteSpace(p.WorldId) || p.RemotePrefix != $"worlds/{p.WorldId}/" ||
             string.IsNullOrWhiteSpace(p.WorldDisplayName) || string.IsNullOrWhiteSpace(p.WorldFolderName) || p.RetentionCount is < 0 or > 1000)
             throw new InvalidDataException("Dados do convite inválidos.");
         p.Credentials.Validate();

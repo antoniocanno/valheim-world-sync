@@ -5,14 +5,14 @@ namespace ValheimWorldSync.Tests;
 
 public sealed class LeaseTests
 {
-    internal static WorldVersion Version(string id) => new(id, $"backups/{id}.zip", new('A',64), new('B',64), 100, DateTimeOffset.UtcNow);
+    internal static WorldVersion Version(string id) => new(id, $"backups/{id}.zip", new('A', 64), new('B', 64), 100, DateTimeOffset.UtcNow);
     [Fact]
     public async Task OnlyOneCompetingPlayerAcquires()
     {
         var repo = new MemoryRepository();
         async Task<bool> Acquire(string id)
         {
-            try { await new LeaseCoordinator(repo, "world", id, id).AcquireAsync(id); return true; }
+            try { await new LeaseCoordinator(repo, "world", id, id, "Midgard", "Midgard", 10).AcquireAsync(id); return true; }
             catch (WorldBusyException) { return false; }
         }
         var results = await Task.WhenAll(Task.Run(() => Acquire("a")), Task.Run(() => Acquire("b")));
@@ -22,8 +22,8 @@ public sealed class LeaseTests
     public async Task ExpiredOwnerCannotPublishRenewOrReleaseNewOwner()
     {
         var repo = new MemoryRepository();
-        var a = new LeaseCoordinator(repo, "world", "A", "a");
-        var b = new LeaseCoordinator(repo, "world", "B", "b");
+        var a = new LeaseCoordinator(repo, "world", "A", "a", "Midgard", "Midgard", 10);
+        var b = new LeaseCoordinator(repo, "world", "B", "b", "Midgard", "Midgard", 10);
         await a.AcquireAsync("a");
         repo.UtcNow += TimeSpan.FromSeconds(183);
         await b.AcquireAsync("b");
@@ -38,7 +38,7 @@ public sealed class LeaseTests
     public async Task PublicationChecksBaseVersionAndPreservesHistory()
     {
         var repo = new MemoryRepository();
-        var lease = new LeaseCoordinator(repo, "world", "A", "a");
+        var lease = new LeaseCoordinator(repo, "world", "A", "a", "Midgard", "Midgard", 10);
         await lease.AcquireAsync("a");
         await lease.PublishAsync("a", null, Version("one"));
         await Assert.ThrowsAsync<WorldConflictException>(() => lease.PublishAsync("a", null, Version("two")));
@@ -54,7 +54,13 @@ public sealed class LeaseTests
     public async Task StaleETagCannotReplaceManifest()
     {
         var repo = new MemoryRepository();
-        var initial = await repo.TryWriteAsync(new WorldManifest { WorldId = "world" }, null);
+        var initial = await repo.TryWriteAsync(new WorldManifest
+        {
+            WorldId = "world",
+            WorldDisplayName = "Midgard",
+            WorldFolderName = "Midgard",
+            RetentionCount = 10
+        }, null);
         await repo.TryWriteAsync(initial!.Manifest with { Revision = "new" }, initial.ETag);
         Assert.Null(await repo.TryWriteAsync(initial.Manifest, initial.ETag));
     }
@@ -62,7 +68,15 @@ public sealed class LeaseTests
     public void ManifestRejectsDeletingReferencedObjects()
     {
         var version = Version("one");
-        var manifest = new WorldManifest { WorldId = "world", Current = version, PendingDeletes = [version.Key] };
+        var manifest = new WorldManifest
+        {
+            WorldId = "world",
+            Current = version,
+            PendingDeletes = [version.Key],
+            WorldDisplayName = "Midgard",
+            WorldFolderName = "Midgard",
+            RetentionCount = 10
+        };
         Assert.Throws<InvalidDataException>(() => manifest.Validate("world"));
     }
 }

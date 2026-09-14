@@ -1,6 +1,6 @@
-using System.Security.Cryptography;
-using System.Diagnostics;
 using Amazon.S3;
+using System.Diagnostics;
+using System.Security.Cryptography;
 using ValheimWorldSync.Core.Models;
 using ValheimWorldSync.Infrastructure.Configuration;
 using ValheimWorldSync.Infrastructure.Storage;
@@ -19,7 +19,13 @@ public sealed class R2Tests
         var prefix = $"vws-tests/{Guid.NewGuid():N}/";
         using var a = new R2WorldRepository(config, prefix);
         using var b = new R2WorldRepository(config, prefix);
-        var one = new WorldManifest { WorldId = config.WorldId };
+        var one = new WorldManifest
+        {
+            WorldId = config.WorldId,
+            WorldDisplayName = config.WorldFolderName,
+            WorldFolderName = config.WorldFolderName,
+            RetentionCount = config.BackupCount
+        };
         var two = one with { Revision = Guid.NewGuid().ToString("N") };
         var writes = await Task.WhenAll(a.TryWriteAsync(one, null), b.TryWriteAsync(two, null));
         var winner = Assert.Single(writes, w => w is not null)!;
@@ -68,7 +74,7 @@ public sealed class R2Tests
         var temporaryRoot = Path.Combine(Path.GetTempPath(), "vws-world-integration-" + Guid.NewGuid().ToString("N"));
         try
         {
-            var archive = new WorldArchive(Path.Combine(temporaryRoot, "app"));
+            var archive = new WorldArchive(Path.Combine(temporaryRoot, "app"), "integration");
             var sourceBefore = await archive.GetTreeHashAsync(config.WorldPath, TestContext.Current.CancellationToken);
             var snapshot = await archive.CreateAsync(config.WorldPath, TestContext.Current.CancellationToken);
             var restored = Path.Combine(temporaryRoot, "restored-world");

@@ -1,6 +1,6 @@
+using System.ComponentModel;
 using ValheimWorldSync.Platform.Windows.Credentials;
 using Xunit;
-using System.ComponentModel;
 
 namespace ValheimWorldSync.Windows.Tests;
 

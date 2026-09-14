@@ -1,6 +1,7 @@
 using ValheimWorldSync.Platform.Windows.Game;
 using Xunit;
 namespace ValheimWorldSync.Windows.Tests;
+
 public sealed class SaveDiscoveryTests : IDisposable
 {
     private readonly string root = Path.Combine(Path.GetTempPath(), "vws-saves-" + Guid.NewGuid().ToString("N"));

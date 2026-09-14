@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
-using ValheimWorldSync.Infrastructure.WorldFiles;
 using ValheimWorldSync.Infrastructure.Recovery;
+using ValheimWorldSync.Infrastructure.WorldFiles;
 using Xunit;
 namespace ValheimWorldSync.Tests;
 
@@ -16,7 +16,7 @@ public sealed class ArchiveTests : IDisposable
         Directory.CreateDirectory(Path.Combine(source, "chunks"));
         await File.WriteAllTextAsync(Path.Combine(source, "world.fwl"), "metadata");
         await File.WriteAllTextAsync(Path.Combine(source, "chunks", "0.chunk"), "world-data");
-        var archive = new WorldArchive(Path.Combine(root, "app"));
+        var archive = new WorldArchive(Path.Combine(root, "app"), "test");
         var snapshot = await archive.CreateAsync(source);
         var target = Path.Combine(root, "target");
         Directory.CreateDirectory(target);
@@ -49,7 +49,7 @@ public sealed class ArchiveTests : IDisposable
         var target = Path.Combine(root, "target");
         Directory.CreateDirectory(target);
         await File.WriteAllTextAsync(Path.Combine(target, "keep"), "safe");
-        var service = new WorldArchive(Path.Combine(root, "app"));
+        var service = new WorldArchive(Path.Combine(root, "app"), "test");
         await Assert.ThrowsAsync<InvalidDataException>(() => service.InstallAsync(version, zip, target, () => false));
         Assert.Equal("safe", await File.ReadAllTextAsync(Path.Combine(target, "keep")));
     }
@@ -57,7 +57,8 @@ public sealed class ArchiveTests : IDisposable
     public async Task InterruptedRenameRestoresBackup()
     {
         var app = Path.Combine(root, "app");
-        var target = Path.Combine(root, "world");
+        var target = Path.Combine(root, "saves", "world");
+        Directory.CreateDirectory(Path.Combine(root, "saves"));
         var workspace = Path.Combine(root, ".vws-work-" + Guid.NewGuid().ToString("N"));
         var backup = Path.Combine(workspace, "previous");
         var stage = Path.Combine(workspace, "staging");
@@ -65,25 +66,14 @@ public sealed class ArchiveTests : IDisposable
         Directory.CreateDirectory(stage);
         await File.WriteAllTextAsync(Path.Combine(backup, "saved"), "original");
         await DurableJson.WriteAsync(Path.Combine(app, "install.json"), new WorldArchive.InstallRecord(target, stage, backup));
-        await new WorldArchive(app).RecoverInstallAsync(target, () => false);
+        await new WorldArchive(app, "test").RecoverInstallAsync(target, () => false);
         Assert.Equal("original", await File.ReadAllTextAsync(Path.Combine(target, "saved")));
     }
     [Fact]
     public async Task DoesNotInstallWhileGameIsRunning()
     {
-        var archive = new WorldArchive(Path.Combine(root, "app"));
-        await Assert.ThrowsAsync<IOException>(() => archive.InstallAsync(LeaseTests.Version("one"), "absent", Path.Combine(root,"world"), () => true));
-    }
-    [Fact]
-    public async Task MigratesLegacyArtifactsOutOfWorldSelector()
-    {
-        var saves = Path.Combine(root, "worlds_local");
-        var legacy = Path.Combine(saves, ".vws-backup-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(legacy); await File.WriteAllTextAsync(Path.Combine(legacy, "world.fwl"), "old");
-        var archive = new WorldArchive(Path.Combine(root, "app"));
-        Assert.Equal(1, await archive.MigrateLegacyArtifactsAsync(saves, "Viking"));
-        Assert.False(Directory.Exists(legacy));
-        Assert.Single(Directory.GetFiles(Path.Combine(root, "app", "recovery"), "*.zip"));
+        var archive = new WorldArchive(Path.Combine(root, "app"), "test");
+        await Assert.ThrowsAsync<IOException>(() => archive.InstallAsync(LeaseTests.Version("one"), "absent", Path.Combine(root, "world"), () => true));
     }
     [Fact]
     public async Task RejectsDataDirectoryNestedInsideWorld()
@@ -91,7 +81,7 @@ public sealed class ArchiveTests : IDisposable
         var world = Path.Combine(root, "world");
         Directory.CreateDirectory(world);
         await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "data");
-        var archive = new WorldArchive(Path.Combine(world, ".app-data"));
+        var archive = new WorldArchive(Path.Combine(world, ".app-data"), "test");
         var error = await Assert.ThrowsAsync<InvalidDataException>(() => archive.CreateAsync(world));
         Assert.Contains("dentro da pasta do mundo", error.Message);
     }
@@ -99,26 +89,27 @@ public sealed class ArchiveTests : IDisposable
     public async Task RecoveryPromotesStagingWhenNoPreviousWorldExists()
     {
         var app = Path.Combine(root, "app");
-        var target = Path.Combine(root, "world");
+        var target = Path.Combine(root, "saves", "world");
         var workspace = Path.Combine(root, ".vws-work-" + Guid.NewGuid().ToString("N"));
         var backup = Path.Combine(workspace, "previous");
         var stage = Path.Combine(workspace, "staging");
+        Directory.CreateDirectory(Path.Combine(root, "saves"));
         Directory.CreateDirectory(stage);
         await File.WriteAllTextAsync(Path.Combine(stage, "saved"), "staged");
         await DurableJson.WriteAsync(Path.Combine(app, "install.json"), new WorldArchive.InstallRecord(target, stage, backup));
-        await new WorldArchive(app).RecoverInstallAsync(target, () => false);
+        await new WorldArchive(app, "test").RecoverInstallAsync(target, () => false);
         Assert.Equal("staged", await File.ReadAllTextAsync(Path.Combine(target, "saved")));
     }
     [Fact]
     public async Task RecoveryFailsClosedWhenAllInstallDirectoriesAreMissing()
     {
         var app = Path.Combine(root, "app");
-        var target = Path.Combine(root, "world");
+        var target = Path.Combine(root, "saves", "world");
         var workspace = Path.Combine(root, ".vws-work-" + Guid.NewGuid().ToString("N"));
         var backup = Path.Combine(workspace, "previous");
         var stage = Path.Combine(workspace, "staging");
         await DurableJson.WriteAsync(Path.Combine(app, "install.json"), new WorldArchive.InstallRecord(target, stage, backup));
-        await Assert.ThrowsAsync<IOException>(() => new WorldArchive(app).RecoverInstallAsync(target, () => false));
+        await Assert.ThrowsAsync<IOException>(() => new WorldArchive(app, "test").RecoverInstallAsync(target, () => false));
         Assert.True(File.Exists(Path.Combine(app, "install.json")));
     }
     public void Dispose() => DeleteEventually(root);

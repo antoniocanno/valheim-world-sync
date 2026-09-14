@@ -23,7 +23,9 @@ public sealed class SyncEngine
     {
         this.repository = repository; this.archive = archive; this.journal = journal; this.game = game; this.options = options;
         this.time = time ?? TimeProvider.System;
-        lease = new(repository, options.WorldId, options.Player, options.InstallationId);
+        var folder = options.WorldFolderName ?? Path.GetFileName(Path.GetFullPath(options.WorldPath));
+        var display = options.WorldDisplayName ?? folder;
+        lease = new(repository, options.WorldId, options.Player, options.InstallationId, display, folder, options.BackupCount);
     }
 
     public Task PlayAsync(CancellationToken token = default) => Guard(async () =>
@@ -34,7 +36,7 @@ public sealed class SyncEngine
         Set(SyncState.Checking, "Verificando disponibilidade do mundo…");
         var sessionId = Guid.NewGuid().ToString("N");
         Set(SyncState.Acquiring, "Reservando o mundo…");
-        var manifest = await UpgradeManifestAsync(sessionId, await lease.AcquireAsync(sessionId, token), token);
+        var manifest = await lease.AcquireAsync(sessionId, token);
         if (manifest.Current is null)
         {
             await lease.ReleaseAsync(sessionId, token);
@@ -78,7 +80,7 @@ public sealed class SyncEngine
         await archive.RecoverInstallAsync(options.WorldPath, () => game.IsRunning, token);
         var sessionId = Guid.NewGuid().ToString("N");
         Set(SyncState.Acquiring, "Reservando o mundo para a primeira importação…");
-        var manifest = await UpgradeManifestAsync(sessionId, await lease.AcquireAsync(sessionId, token), token);
+        var manifest = await lease.AcquireAsync(sessionId, token);
         if (manifest.Current is not null)
         {
             await lease.ReleaseAsync(sessionId, token);
@@ -146,7 +148,7 @@ public sealed class SyncEngine
         EnsureGameClosed();
         if (await journal.ReadAsync(token) is not null) throw new InvalidDataException("Resolva a sessão pendente antes de reinicializar o mundo.");
         var sessionId = Guid.NewGuid().ToString("N");
-        var manifest = await UpgradeManifestAsync(sessionId, await lease.AcquireAsync(sessionId, token), token);
+        var manifest = await lease.AcquireAsync(sessionId, token);
         try
         {
             await WithHeartbeat(sessionId, async () =>
@@ -213,7 +215,7 @@ public sealed class SyncEngine
         await archive.VerifyAsync(snapshot, token);
         await EnsureLocalMatchesSnapshot(snapshot, token);
         Set(SyncState.Acquiring, "Confirmando posse e versão-base para publicar…");
-        var manifest = await UpgradeManifestAsync(session.SessionId, await lease.AcquireAsync(session.SessionId, token), token);
+        var manifest = await lease.AcquireAsync(session.SessionId, token);
         if (manifest.Current?.Id == snapshot.Version.Id)
         {
             await Finish(session, token);
@@ -264,8 +266,13 @@ public sealed class SyncEngine
     }
     private SessionRecord NewSession(string id, WorldVersion? baseVersion, bool import) => new()
     {
-        SessionId = id, WorldId = options.WorldId, WorldPath = Path.GetFullPath(options.WorldPath),
-        RepositoryIdentity = options.RepositoryIdentity, BaseVersion = baseVersion, Stage = SessionStage.Preparing, IsImport = import
+        SessionId = id,
+        WorldId = options.WorldId,
+        WorldPath = Path.GetFullPath(options.WorldPath),
+        RepositoryIdentity = options.RepositoryIdentity,
+        BaseVersion = baseVersion,
+        Stage = SessionStage.Preparing,
+        IsImport = import
     };
     private void ValidateSession(SessionRecord session)
     {
@@ -283,19 +290,6 @@ public sealed class SyncEngine
         if (await archive.GetTreeHashAsync(options.WorldPath, token) != snapshot.Version.TreeHash)
             throw new WorldConflictException();
         EnsureSafeToCapture();
-    }
-    private async Task<WorldManifest> UpgradeManifestAsync(string sessionId, WorldManifest manifest, CancellationToken token)
-    {
-        if (manifest.SchemaVersion == 2) return manifest;
-        var folder = options.WorldFolderName ?? Path.GetFileName(Path.GetFullPath(options.WorldPath));
-        var display = options.WorldDisplayName ?? folder;
-        return await lease.MutateOwned(sessionId, current => current with
-        {
-            SchemaVersion = 2,
-            WorldDisplayName = display,
-            WorldFolderName = folder,
-            RetentionCount = options.BackupCount
-        }, token);
     }
     private static bool IsAncestorOf(string possibleAncestor, string path)
     {

@@ -17,7 +17,7 @@ public sealed record ProfileConnection
     public required string Endpoint { get; init; }
     public required string Bucket { get; init; }
     public required string WorldId { get; init; }
-    public string RemotePrefix { get; init; } = "";
+    public required string RemotePrefix { get; init; }
     public required string WorldDisplayName { get; init; }
     public required string WorldFolderName { get; init; }
     public int RetentionCount { get; init; } = 10;
@@ -37,7 +37,7 @@ public sealed record WorldProfile(string Id, string Root, ProfileConnection Conn
         ? ValheimLocations.DefaultWorldsLocal : Path.GetFullPath(Local.SavesRootOverride);
     public string WorldPath => Path.Combine(SavesRoot, Connection.WorldFolderName);
 
-    public AppConfiguration ToLegacyConfiguration(R2Credentials credentials, string player) => new()
+    public AppConfiguration ToConfiguration(R2Credentials credentials, string player) => new()
     {
         Endpoint = Connection.Endpoint,
         Bucket = Connection.Bucket,

@@ -8,7 +8,7 @@ public sealed class RetentionTests
     public async Task KeepsCurrentAndNPreviousVersions()
     {
         var repo = new MemoryRepository();
-        var lease = new LeaseCoordinator(repo, "world", "A", "a");
+        var lease = new LeaseCoordinator(repo, "world", "A", "a", "Midgard", "Midgard", 10);
         await lease.AcquireAsync("a");
         for (var n = 0; n < 5; n++)
         {
@@ -28,7 +28,7 @@ public sealed class RetentionTests
     public async Task FailedDeletionRemainsQueuedAndCanBeRetriedByNextOwner()
     {
         var repo = new MemoryRepository();
-        var lease = new LeaseCoordinator(repo, "world", "A", "a");
+        var lease = new LeaseCoordinator(repo, "world", "A", "a", "Midgard", "Midgard", 10);
         await lease.AcquireAsync("a");
         await lease.PublishAsync("a", null, LeaseTests.Version("one"));
         await lease.PublishAsync("a", "one", LeaseTests.Version("two"));
@@ -38,7 +38,7 @@ public sealed class RetentionTests
         Assert.Single((await repo.ReadAsync())!.Manifest.PendingDeletes);
         await lease.ReleaseAsync("a");
         repo.FailDelete = false;
-        var next = new LeaseCoordinator(repo, "world", "B", "b");
+        var next = new LeaseCoordinator(repo, "world", "B", "b", "Midgard", "Midgard", 10);
         await next.AcquireAsync("b");
         await new BackupRetention(repo, next).PruneAsync("b", 0);
         Assert.Empty((await repo.ReadAsync())!.Manifest.PendingDeletes);

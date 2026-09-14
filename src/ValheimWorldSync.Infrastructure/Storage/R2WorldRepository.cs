@@ -19,7 +19,7 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
     private readonly string worldId;
     private readonly string prefix;
     public DateTimeOffset UtcNow => utcNow();
-    public R2WorldRepository(AppConfiguration config, string prefix = "")
+    public R2WorldRepository(AppConfiguration config, string prefix)
     {
         config.Validate();
         utcNow = () => clock.UtcNow;
@@ -28,15 +28,18 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
         worldId = config.WorldId;
         client = new AmazonS3Client(new BasicAWSCredentials(config.AccessKeyId, config.SecretAccessKey), new AmazonS3Config
         {
-            ServiceURL = config.Endpoint, AuthenticationRegion = "auto", ForcePathStyle = true,
-            MaxErrorRetry = 0, HttpClientFactory = clock,
+            ServiceURL = config.Endpoint,
+            AuthenticationRegion = "auto",
+            ForcePathStyle = true,
+            MaxErrorRetry = 0,
+            HttpClientFactory = clock,
             RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
             Timeout = TimeSpan.FromMinutes(15)
         });
     }
-    internal R2WorldRepository(IAmazonS3 client, string bucket, string worldId, Func<DateTimeOffset> utcNow)
+    internal R2WorldRepository(IAmazonS3 client, string bucket, string worldId, Func<DateTimeOffset> utcNow, string prefix)
     {
-        this.client = client; this.bucket = bucket; this.worldId = worldId; this.utcNow = utcNow; prefix = "";
+        this.client = client; this.bucket = bucket; this.worldId = worldId; this.utcNow = utcNow; this.prefix = prefix;
     }
     public async Task<ManifestSnapshot?> ReadAsync(CancellationToken cancellationToken = default) =>
         await Retry(async () =>
@@ -87,7 +90,7 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
     public async Task UploadAsync(WorldVersion version, string archivePath, CancellationToken cancellationToken = default, IProgress<TransferProgress>? progress = null)
     {
         CheckKey(version.Key);
-        if (version.Size > 4L * 1024 * 1024 * 1024) throw new InvalidDataException("Limite da v1: ZIP de 4 GiB.");
+        if (version.Size > 4L * 1024 * 1024 * 1024) throw new InvalidDataException("ZIP excede o limite de 4 GiB.");
         var completedAttempt = 1;
         await Retry(async attempt =>
         {
@@ -162,15 +165,18 @@ public sealed class R2WorldRepository : IWorldRepository, IDisposable
         finally
         {
             if (uploaded) try { await client.DeleteObjectAsync(bucket, key, cancellationToken); }
-            catch when (!cancellationToken.IsCancellationRequested) { throw new IOException("A credencial R2 não possui permissão de exclusão."); }
+                catch when (!cancellationToken.IsCancellationRequested) { throw new IOException("A credencial R2 não possui permissão de exclusão."); }
         }
     }
     private static void CheckKey(string key)
     { if (!WorldManifest.ValidKey(key)) throw new InvalidDataException("Chave de snapshot inválida."); }
     private PutObjectRequest Put(string key) => new()
     {
-        BucketName = bucket, Key = key, DisablePayloadSigning = true,
-        DisableDefaultChecksumValidation = true, UseChunkEncoding = false
+        BucketName = bucket,
+        Key = key,
+        DisablePayloadSigning = true,
+        DisableDefaultChecksumValidation = true,
+        UseChunkEncoding = false
     };
     private static bool Transient(Exception e, CancellationToken ct) => !ct.IsCancellationRequested &&
         (e is HttpRequestException or IOException or TaskCanceledException ||

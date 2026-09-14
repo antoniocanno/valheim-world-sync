@@ -1,5 +1,6 @@
 using System.Windows;
 namespace ValheimWorldSync.Desktop;
+
 public partial class InvitePasswordWindow : Window
 {
     public string Password => PasswordBox.Password;

@@ -8,7 +8,8 @@ public sealed class WorldBusyException(string player) : Exception($"Mundo em uso
 { public string Player { get; } = player; }
 public sealed class WorldConflictException() : Exception("Outra versão foi publicada. O progresso local foi preservado.");
 
-public sealed class LeaseCoordinator(IWorldRepository repository, string worldId, string player, string installationId)
+public sealed class LeaseCoordinator(IWorldRepository repository, string worldId, string player, string installationId,
+    string worldDisplayName, string worldFolderName, int retentionCount)
 {
     private readonly SemaphoreSlim gate = new(1, 1);
     public static TimeSpan Ttl { get; } = TimeSpan.FromSeconds(180);
@@ -21,7 +22,13 @@ public sealed class LeaseCoordinator(IWorldRepository repository, string worldId
             for (var attempt = 0; attempt < 5; attempt++)
             {
                 var snapshot = await repository.ReadAsync(token);
-                var manifest = snapshot?.Manifest ?? new WorldManifest { WorldId = worldId };
+                var manifest = snapshot?.Manifest ?? new WorldManifest
+                {
+                    WorldId = worldId,
+                    WorldDisplayName = worldDisplayName,
+                    WorldFolderName = worldFolderName,
+                    RetentionCount = retentionCount
+                };
                 manifest.Validate(worldId);
                 if (manifest.Lease is { } owner && owner.SessionId != sessionId &&
                     owner.ExpiresAt + TimeSpan.FromSeconds(2) > repository.UtcNow)
