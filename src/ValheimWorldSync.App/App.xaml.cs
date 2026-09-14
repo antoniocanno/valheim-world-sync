@@ -1,6 +1,10 @@
+using System.Globalization;
+using System.Text.Json;
 using System.Windows;
 using ValheimWorldSync.Desktop.Tray;
 using ValheimWorldSync.Desktop.ViewModels;
+using ValheimWorldSync.Infrastructure.Configuration;
+using ValheimWorldSync.Platform.Windows.Configuration;
 
 namespace ValheimWorldSync;
 
@@ -14,6 +18,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ApplySavedCulture();
         if (e.Args is ["--smoke-test", var output])
         {
             try { await Desktop.StartupSmoke.RunAsync(output, Dispatcher); Shutdown(0); }
@@ -42,6 +47,25 @@ public partial class App : Application
         {
             MessageBox.Show("Não foi possível iniciar a recuperação. Os arquivos locais foram preservados.", "Valheim World Sync");
         }
+    }
+    private static void ApplySavedCulture()
+    {
+        var culture = CultureInfo.GetCultureInfo(ReadSavedLanguage());
+        CultureInfo.CurrentCulture = culture;
+        CultureInfo.CurrentUICulture = culture;
+        CultureInfo.DefaultThreadCurrentCulture = culture;
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
+    }
+    private static string ReadSavedLanguage()
+    {
+        try
+        {
+            var path = Path.Combine(AppConfiguration.DataRoot, "settings.json");
+            if (!File.Exists(path)) return AppLanguage.Default;
+            var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path), AppConfiguration.JsonOptions);
+            return AppLanguage.Normalize(settings?.Language);
+        }
+        catch { return AppLanguage.Default; }
     }
     private void RequestExit()
     {
