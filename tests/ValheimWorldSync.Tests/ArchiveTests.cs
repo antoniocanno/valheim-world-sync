@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Infrastructure.Recovery;
 using ValheimWorldSync.Infrastructure.WorldFiles;
 using Xunit;
@@ -85,8 +86,10 @@ public sealed class ArchiveTests : IDisposable
             var previousUiCulture = CultureInfo.CurrentUICulture;
             try
             {
-                CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
-                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+                var cultureInfo = CultureInfo.GetCultureInfo(culture);
+                CultureInfo.CurrentCulture = cultureInfo;
+                CultureInfo.CurrentUICulture = cultureInfo;
+                Strings.SetLanguage(cultureInfo);
                 var world = Path.Combine(root, "world-" + culture);
                 Directory.CreateDirectory(world);
                 await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "data");

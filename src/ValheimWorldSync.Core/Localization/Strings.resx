@@ -29,6 +29,7 @@
   <data name="Main_NoWorld" xml:space="preserve"><value>NO WORLD CONFIGURED</value></data>
   <data name="Main_NoProfile" xml:space="preserve"><value>Create or import a profile in Settings.</value></data>
   <data name="Main_CredentialsMissing" xml:space="preserve"><value>The protected credentials for this profile were not found.</value></data>
+  <data name="Main_WorldFolderLabel" xml:space="preserve"><value>{0} · folder: {1}</value></data>
   <data name="Main_TransferUpload" xml:space="preserve"><value>Upload</value></data>
   <data name="Main_TransferDownload" xml:space="preserve"><value>Download</value></data>
   <data name="Main_TransferRetryWait" xml:space="preserve"><value>{0}: attempt {1}/{2}; retrying in {3}s</value></data>
@@ -99,7 +100,7 @@ The next Play will download the cloud version. Local changes will NOT be merged.
   <data name="Settings_DeleteProfile" xml:space="preserve"><value>Delete profile</value></data>
   <data name="Settings_ExportInvite" xml:space="preserve"><value>Export invite</value></data>
   <data name="Settings_Save" xml:space="preserve"><value>Save and activate</value></data>
-  <data name="Settings_RestartNote" xml:space="preserve"><value>The language will apply after restarting the app.</value></data>
+  <data name="Settings_RestartNote" xml:space="preserve"><value>Language saved. It will apply after restarting the app.</value></data>
   <data name="Settings_DetectedInside" xml:space="preserve"><value>World detected inside '{0}'. No copy needed on save.</value></data>
   <data name="Settings_SelectedOutside" xml:space="preserve"><value>World selected outside the saves folder. On save, '{0}' will be copied to '{1}'.</value></data>
   <data name="Settings_RetentionInvalid" xml:space="preserve"><value>Invalid retention.</value></data>

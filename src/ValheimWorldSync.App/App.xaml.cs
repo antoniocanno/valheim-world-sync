@@ -49,9 +49,11 @@ public partial class App : Application
             MessageBox.Show(Strings.Get("App_RecoveryFailed"), "Valheim World Sync");
         }
     }
-    private static void ApplySavedCulture()
+    private static void ApplySavedCulture() => ApplyLanguage(ReadSavedLanguage());
+    public static void ApplyLanguage(string language)
     {
-        var culture = CultureInfo.GetCultureInfo(ReadSavedLanguage());
+        var culture = CultureInfo.GetCultureInfo(Platform.Windows.Configuration.AppLanguage.Normalize(language));
+        Strings.SetLanguage(culture);
         CultureInfo.CurrentCulture = culture;
         CultureInfo.CurrentUICulture = culture;
         CultureInfo.DefaultThreadCurrentCulture = culture;

@@ -5,24 +5,35 @@ namespace ValheimWorldSync.Core.Localization;
 
 /// <summary>
 /// Shared user-facing strings. The neutral resources are en-US; pt-BR ships as a satellite.
-/// Lookup follows <see cref="CultureInfo.CurrentUICulture"/>, which the app sets from
-/// settings at startup (restart required), so no live-reload plumbing is needed.
+/// The active language is explicit static state (set once at startup and on save), so lookups
+/// never depend on thread-ambient <see cref="CultureInfo.CurrentUICulture"/>, which resets to
+/// the OS default outside async continuations.
 /// </summary>
 public static class Strings
 {
     public const string BaseName = "ValheimWorldSync.Core.Localization.Strings";
 
     private static readonly ResourceManager Manager = new(BaseName, typeof(Strings).Assembly);
+    private static readonly CultureInfo English = CultureInfo.GetCultureInfo("en-US");
+
+    private static CultureInfo language = English;
+
+    /// <summary>Culture used for all string resolution; immune to thread ambient culture.</summary>
+    public static CultureInfo Language => language;
+
+    public static void SetLanguage(CultureInfo culture)
+    {
+        language = CultureInfo.GetCultureInfo(culture.Name);
+    }
 
     public static string Get(string key)
     {
-        var value = Manager.GetString(key, CultureInfo.CurrentUICulture)
-            ?? Manager.GetString(key, CultureInfo.GetCultureInfo("en-US"));
+        var value = Manager.GetString(key, language) ?? Manager.GetString(key, English);
         return value ?? key;
     }
 
     public static string Format(string key, params object?[] args) =>
-        string.Format(CultureInfo.CurrentCulture, Get(key), args);
+        string.Format(language, Get(key), args);
 
     public static IReadOnlySet<string> NeutralKeys()
     {

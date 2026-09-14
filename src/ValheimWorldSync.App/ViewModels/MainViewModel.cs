@@ -119,7 +119,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             var credentials = await profileStore.ReadCredentialsAsync(profile, lifetime.Token)
                 ?? throw new InvalidDataException(Strings.Get("Main_CredentialsMissing"));
             configuration = profile.ToConfiguration(credentials, settings.PlayerName);
-            WorldLabel = $"{profile.Connection.WorldDisplayName} · pasta: {profile.Connection.WorldFolderName}";
+            WorldLabel = Strings.Format("Main_WorldFolderLabel",
+                profile.Connection.WorldDisplayName, profile.Connection.WorldFolderName);
             CloudGuidance = ValheimSaveDiscovery.Detect(Path.GetDirectoryName(profile.SavesRoot)).Guidance ?? "";
             configuration.Validate();
             var installation = await InstallationIdentity.LoadOrCreateAsync(dataRoot, lifetime.Token);

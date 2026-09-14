@@ -46,8 +46,11 @@ public partial class SettingsWindow : Window
         ProfilesBox.SelectedItem = catalog.Selected ?? catalog.Profiles.FirstOrDefault();
         if (catalog.Profiles.Count == 0) ClearForNew();
     }
-    private string SelectedLanguage() =>
-        (LanguageBox.SelectedItem as LanguageOption)?.Code ?? AppLanguage.Normalize(catalog.Settings.Language);
+    private string SelectedLanguage()
+    {
+        var item = LanguageBox.SelectedItem as LanguageOption;
+        return item?.Code ?? AppLanguage.Normalize(catalog.Settings.Language);
+    }
     private async void ProfileChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         selected = ProfilesBox.SelectedItem as WorldProfile;

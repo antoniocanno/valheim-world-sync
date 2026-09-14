@@ -62,22 +62,46 @@ public sealed class LocalizationTests
         Assert.Equal("Mundo em uso por Freyja.", Strings.Format("Lease_Busy", "Freyja"));
     }
 
+    [Fact]
+    public void SetLanguageIsIndependentOfThreadAmbientCulture()
+    {
+        var previous = Strings.Language;
+        var previousUiCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            Strings.SetLanguage(CultureInfo.GetCultureInfo("pt-BR"));
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("fr-FR");
+            Assert.Equal("pt-BR", Strings.Language.Name);
+            Assert.Equal("fr-FR", CultureInfo.CurrentUICulture.Name);
+            Assert.Equal("Jogar", Strings.Get("Main_Play"));
+            Assert.Equal("Mundo em uso por Freyja.", Strings.Format("Lease_Busy", "Freyja"));
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = previousUiCulture;
+            Strings.SetLanguage(previous);
+        }
+    }
+
     private static CultureScope UseCulture(string name)
     {
         var previousCulture = CultureInfo.CurrentCulture;
         var previousUiCulture = CultureInfo.CurrentUICulture;
+        var previousLanguage = Strings.Language;
         var culture = CultureInfo.GetCultureInfo(name);
         CultureInfo.CurrentCulture = culture;
         CultureInfo.CurrentUICulture = culture;
-        return new CultureScope(previousCulture, previousUiCulture);
+        Strings.SetLanguage(culture);
+        return new CultureScope(previousCulture, previousUiCulture, previousLanguage);
     }
 
-    private sealed class CultureScope(CultureInfo culture, CultureInfo uiCulture) : IDisposable
+    private sealed class CultureScope(CultureInfo culture, CultureInfo uiCulture, CultureInfo language) : IDisposable
     {
         public void Dispose()
         {
             CultureInfo.CurrentCulture = culture;
             CultureInfo.CurrentUICulture = uiCulture;
+            Strings.SetLanguage(language);
         }
     }
 }

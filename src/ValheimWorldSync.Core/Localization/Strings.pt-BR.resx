@@ -29,6 +29,7 @@
   <data name="Main_NoWorld" xml:space="preserve"><value>NENHUM MUNDO CONFIGURADO</value></data>
   <data name="Main_NoProfile" xml:space="preserve"><value>Crie ou importe um perfil em Configuração.</value></data>
   <data name="Main_CredentialsMissing" xml:space="preserve"><value>As credenciais protegidas deste perfil não foram encontradas.</value></data>
+  <data name="Main_WorldFolderLabel" xml:space="preserve"><value>{0} · pasta: {1}</value></data>
   <data name="Main_TransferUpload" xml:space="preserve"><value>Upload</value></data>
   <data name="Main_TransferDownload" xml:space="preserve"><value>Download</value></data>
   <data name="Main_TransferRetryWait" xml:space="preserve"><value>{0}: tentativa {1}/{2}; nova tentativa em {3}s</value></data>
@@ -99,7 +100,7 @@ O próximo Jogar baixará a versão da nuvem. As alterações locais NÃO serão
   <data name="Settings_DeleteProfile" xml:space="preserve"><value>Excluir perfil</value></data>
   <data name="Settings_ExportInvite" xml:space="preserve"><value>Exportar convite</value></data>
   <data name="Settings_Save" xml:space="preserve"><value>Salvar e ativar</value></data>
-  <data name="Settings_RestartNote" xml:space="preserve"><value>O idioma será aplicado após reiniciar o app.</value></data>
+  <data name="Settings_RestartNote" xml:space="preserve"><value>Idioma salvo. Será aplicado após reiniciar o app.</value></data>
   <data name="Settings_DetectedInside" xml:space="preserve"><value>Mundo detectado dentro de '{0}'. Nenhuma cópia necessária ao salvar.</value></data>
   <data name="Settings_SelectedOutside" xml:space="preserve"><value>Mundo selecionado fora da pasta de saves. Ao salvar, '{0}' será copiado para '{1}'.</value></data>
   <data name="Settings_RetentionInvalid" xml:space="preserve"><value>Retenção inválida.</value></data>
