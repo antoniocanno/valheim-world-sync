@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Main_HeroKicker" xml:space="preserve"><value>ᛗ  Valheim World Sync</value></data>
+  <data name="Main_HeroTitle" xml:space="preserve"><value>Um mundo. Sua próxima aventura.</value></data>
+  <data name="Main_HeroSubtitle" xml:space="preserve"><value>O progresso acompanha quem vai hospedar.</value></data>
+  <data name="Main_ActiveProfile" xml:space="preserve"><value>Perfil ativo</value></data>
+  <data name="Main_Play" xml:space="preserve"><value>Jogar</value></data>
+  <data name="Main_PlayHint" xml:space="preserve"><value>O app prepara o save e abre o Valheim. Escolha seu personagem e o mundo dentro do jogo.</value></data>
+  <data name="Main_SectionSession" xml:space="preserve"><value>Sessão</value></data>
+  <data name="Main_Friends" xml:space="preserve"><value>Amigos na Steam</value></data>
+  <data name="Main_Reload" xml:space="preserve"><value>Recarregar</value></data>
+  <data name="Main_SectionWorld" xml:space="preserve"><value>Mundo</value></data>
+  <data name="Main_Import" xml:space="preserve"><value>Importar mundo local</value></data>
+  <data name="Main_Export" xml:space="preserve"><value>Exportar progresso</value></data>
+  <data name="Main_Retry" xml:space="preserve"><value>Tentar sincronizar</value></data>
+  <data name="Main_UseCloud" xml:space="preserve"><value>Voltar à nuvem…</value></data>
+  <data name="Main_SectionAdvanced" xml:space="preserve"><value>Avançado</value></data>
+  <data name="Main_Configure" xml:space="preserve"><value>Configuração</value></data>
+  <data name="Main_Reset" xml:space="preserve"><value>Reinicializar remoto…</value></data>
+  <data name="Main_RecoveryLink" xml:space="preserve"><value>Recuperação ↗</value></data>
+  <data name="Main_TrayHint" xml:space="preserve"><value>Fechar esta janela mantém o app na bandeja.</value></data>
+  <data name="Main_Loading" xml:space="preserve"><value>Carregando configuração…</value></data>
+  <data name="Main_Preparing" xml:space="preserve"><value>Preparando</value></data>
+  <data name="Main_SharedWorld" xml:space="preserve"><value>MUNDO COMPARTILHADO</value></data>
+  <data name="Main_NoWorld" xml:space="preserve"><value>NENHUM MUNDO CONFIGURADO</value></data>
+  <data name="Main_NoProfile" xml:space="preserve"><value>Crie ou importe um perfil em Configuração.</value></data>
+  <data name="Main_CredentialsMissing" xml:space="preserve"><value>As credenciais protegidas deste perfil não foram encontradas.</value></data>
+  <data name="Main_TransferUpload" xml:space="preserve"><value>Upload</value></data>
+  <data name="Main_TransferDownload" xml:space="preserve"><value>Download</value></data>
+  <data name="Main_TransferRetryWait" xml:space="preserve"><value>{0}: tentativa {1}/{2}; nova tentativa em {3}s</value></data>
+  <data name="Main_TransferProgress" xml:space="preserve"><value>{0}: {1} de {2} · tentativa {3}/{4}</value></data>
+  <data name="Main_ImportNoProfile" xml:space="preserve"><value>Crie ou importe um perfil antes de publicar um mundo.</value></data>
+  <data name="Main_ImportPrompt" xml:space="preserve"><value>Copiar '{0}' para a pasta usada pelo jogo e publicar como primeiro mundo?
+
+Destino local: {1}
+
+A origem será preservada. Se o destino existir, ele será guardado como backup. O Valheim deve estar fechado.</value></data>
+  <data name="Main_ImportTitle" xml:space="preserve"><value>Importar mundo</value></data>
+  <data name="Main_PendingSessionChange" xml:space="preserve"><value>Resolva a sessão pendente antes de alterar o mundo.</value></data>
+  <data name="Main_ExportCloseGame" xml:space="preserve"><value>Feche o Valheim antes de exportar.</value></data>
+  <data name="Main_ExportTitle" xml:space="preserve"><value>Exportar progresso para recuperação</value></data>
+  <data name="Main_Exported" xml:space="preserve"><value>Progresso exportado. A pendência original continua preservada.</value></data>
+  <data name="Main_ExportOutsideSnapshot" xml:space="preserve"><value>Escolha um destino fora do snapshot original.</value></data>
+  <data name="Main_UseCloudPrompt" xml:space="preserve"><value>Guardar uma cópia local e encerrar esta pendência?
+
+O próximo Jogar baixará a versão da nuvem. As alterações locais NÃO serão mescladas. Você poderá recuperar a cópia pela pasta Recuperação.</value></data>
+  <data name="Main_UseCloudTitle" xml:space="preserve"><value>Voltar à versão da nuvem</value></data>
+  <data name="Main_GenericError" xml:space="preserve"><value>Não foi possível concluir ({0}). Abra Configuração e verifique os campos.</value></data>
+  <data name="Main_ResetFolderTitle" xml:space="preserve"><value>Escolha a pasta completa que substituirá o mundo remoto</value></data>
+  <data name="Main_ResetCloseGame" xml:space="preserve"><value>Feche o Valheim antes de reinicializar o mundo.</value></data>
+  <data name="Common_WorldFolderTitle" xml:space="preserve"><value>Escolha a pasta completa de um mundo local do Valheim 1.0</value></data>
+  <data name="Common_ExportFilePrefix" xml:space="preserve"><value>valheim-recuperacao-</value></data>
+  <data name="Common_ZipTooLarge" xml:space="preserve"><value>ZIP excede o limite de 4 GiB.</value></data>
+  <data name="Status_Idle" xml:space="preserve"><value>Pronto para a próxima partida</value></data>
+  <data name="Status_Checking" xml:space="preserve"><value>Verificando o mundo</value></data>
+  <data name="Status_Acquiring" xml:space="preserve"><value>Reservando o mundo</value></data>
+  <data name="Status_Downloading" xml:space="preserve"><value>Baixando seu mundo</value></data>
+  <data name="Status_Preparing" xml:space="preserve"><value>Preparando o save</value></data>
+  <data name="Status_Launching" xml:space="preserve"><value>Abrindo o Valheim</value></data>
+  <data name="Status_Playing" xml:space="preserve"><value>Boa aventura</value></data>
+  <data name="Status_LocalBackup" xml:space="preserve"><value>Guardando seu progresso</value></data>
+  <data name="Status_Syncing" xml:space="preserve"><value>Sincronizando</value></data>
+  <data name="Status_InUse" xml:space="preserve"><value>Já existe um anfitrião</value></data>
+  <data name="Status_Offline" xml:space="preserve"><value>Sem conexão confirmada</value></data>
+  <data name="Status_Pending" xml:space="preserve"><value>Sincronização pendente</value></data>
+  <data name="Status_Conflict" xml:space="preserve"><value>Progresso precisa de atenção</value></data>
+  <data name="Status_Unknown" xml:space="preserve"><value>Verifique a configuração</value></data>
+  <data name="Settings_Title" xml:space="preserve"><value>Configuração — Valheim World Sync</value></data>
+  <data name="Settings_Hero" xml:space="preserve"><value>Configuração</value></data>
+  <data name="Settings_HeroSubtitle" xml:space="preserve"><value>Jogador e mundos compartilhados</value></data>
+  <data name="Settings_SectionPlayer" xml:space="preserve"><value>Jogador e perfil</value></data>
+  <data name="Settings_PlayerName" xml:space="preserve"><value>Nome do jogador</value></data>
+  <data name="Settings_Profile" xml:space="preserve"><value>Perfil</value></data>
+  <data name="Settings_New" xml:space="preserve"><value>Novo</value></data>
+  <data name="Settings_ImportInvite" xml:space="preserve"><value>Importar convite</value></data>
+  <data name="Settings_Alias" xml:space="preserve"><value>Nome do perfil</value></data>
+  <data name="Settings_Language" xml:space="preserve"><value>Idioma</value></data>
+  <data name="Settings_LanguageEnglish" xml:space="preserve"><value>Inglês (EUA)</value></data>
+  <data name="Settings_LanguagePortuguese" xml:space="preserve"><value>Português (BR)</value></data>
+  <data name="Settings_SectionConnection" xml:space="preserve"><value>Conexão com a nuvem</value></data>
+  <data name="Settings_Endpoint" xml:space="preserve"><value>Endpoint R2</value></data>
+  <data name="Settings_Bucket" xml:space="preserve"><value>Bucket</value></data>
+  <data name="Settings_Retention" xml:space="preserve"><value>Retenção</value></data>
+  <data name="Settings_AccessKey" xml:space="preserve"><value>Access Key ID</value></data>
+  <data name="Settings_SecretKey" xml:space="preserve"><value>Secret Access Key</value></data>
+  <data name="Settings_SecretPlaceholder" xml:space="preserve"><value>(vazio mantém atual)</value></data>
+  <data name="Settings_Test" xml:space="preserve"><value>Testar R2</value></data>
+  <data name="Settings_SectionWorld" xml:space="preserve"><value>Identificação do mundo</value></data>
+  <data name="Settings_WorldId" xml:space="preserve"><value>ID do mundo</value></data>
+  <data name="Settings_DisplayName" xml:space="preserve"><value>Nome exibido</value></data>
+  <data name="Settings_WorldFolder" xml:space="preserve"><value>Pasta do mundo</value></data>
+  <data name="Settings_DetectWorld" xml:space="preserve"><value>Detectar a partir de um mundo local…</value></data>
+  <data name="Settings_SectionSaves" xml:space="preserve"><value>Pasta de saves</value></data>
+  <data name="Settings_ChooseSaves" xml:space="preserve"><value>Selecionar pasta…</value></data>
+  <data name="Settings_DeleteProfile" xml:space="preserve"><value>Excluir perfil</value></data>
+  <data name="Settings_ExportInvite" xml:space="preserve"><value>Exportar convite</value></data>
+  <data name="Settings_Save" xml:space="preserve"><value>Salvar e ativar</value></data>
+  <data name="Settings_RestartNote" xml:space="preserve"><value>O idioma será aplicado após reiniciar o app.</value></data>
+  <data name="Settings_DetectedInside" xml:space="preserve"><value>Mundo detectado dentro de '{0}'. Nenhuma cópia necessária ao salvar.</value></data>
+  <data name="Settings_SelectedOutside" xml:space="preserve"><value>Mundo selecionado fora da pasta de saves. Ao salvar, '{0}' será copiado para '{1}'.</value></data>
+  <data name="Settings_RetentionInvalid" xml:space="preserve"><value>Retenção inválida.</value></data>
+  <data name="Settings_ConnectionOk" xml:space="preserve"><value>Conexão validada: leitura, escrita e exclusão disponíveis.</value></data>
+  <data name="Settings_CopyPrompt" xml:space="preserve"><value>Copiar '{0}' para a pasta de saves do Valheim?
+
+Destino: {1}
+
+A origem será preservada. Se o destino existir, será sobrescrito.</value></data>
+  <data name="Settings_CopyTitle" xml:space="preserve"><value>Copiar mundo para pasta de saves</value></data>
+  <data name="Settings_Cancelled" xml:space="preserve"><value>Operação cancelada pelo usuário.</value></data>
+  <data name="Settings_NewProfile" xml:space="preserve"><value>Novo perfil.</value></data>
+  <data name="Settings_DeletePrompt" xml:space="preserve"><value>Excluir este perfil local? O mundo remoto não será removido.</value></data>
+  <data name="Settings_DeleteTitle" xml:space="preserve"><value>Excluir perfil</value></data>
+  <data name="Settings_SelectProfile" xml:space="preserve"><value>Selecione um perfil.</value></data>
+  <data name="Settings_InviteExported" xml:space="preserve"><value>Convite protegido exportado. Envie a senha separadamente.</value></data>
+  <data name="Settings_CredentialsMissing" xml:space="preserve"><value>Credenciais não encontradas.</value></data>
+  <data name="Settings_CredentialsRequired" xml:space="preserve"><value>Informe as credenciais.</value></data>
+  <data name="Settings_ChooseSavesTitle" xml:space="preserve"><value>Escolha a pasta raiz de saves locais do Valheim (ex: worlds_local)</value></data>
+  <data name="Settings_InviteFilter" xml:space="preserve"><value>Convite Valheim World Sync|*.vwsinvite</value></data>
+  <data name="Onboarding_Title" xml:space="preserve"><value>Bem-vindo — Valheim World Sync</value></data>
+  <data name="Onboarding_Kicker" xml:space="preserve"><value>VALHEIM / WORLD SYNC</value></data>
+  <data name="Onboarding_Heading" xml:space="preserve"><value>Prepare sua primeira aventura</value></data>
+  <data name="Onboarding_Body" xml:space="preserve"><value>Seu nome fica somente neste computador. Depois, crie um mundo compartilhado ou entre com um convite.</value></data>
+  <data name="Onboarding_Create" xml:space="preserve"><value>Criar mundo compartilhado</value></data>
+  <data name="Onboarding_Join" xml:space="preserve"><value>Entrar com convite</value></data>
+  <data name="Onboarding_PlayerRequired" xml:space="preserve"><value>Informe o nome do jogador.</value></data>
+  <data name="Recovery_Title" xml:space="preserve"><value>Recuperação — Valheim World Sync</value></data>
+  <data name="Recovery_Hero" xml:space="preserve"><value>Recuperação</value></data>
+  <data name="Recovery_Subtitle" xml:space="preserve"><value>Cópias verificadas deste perfil</value></data>
+  <data name="Recovery_ColDate" xml:space="preserve"><value>Data</value></data>
+  <data name="Recovery_ColPlayer" xml:space="preserve"><value>Jogador</value></data>
+  <data name="Recovery_ColSize" xml:space="preserve"><value>Tamanho</value></data>
+  <data name="Recovery_ColOrigin" xml:space="preserve"><value>Origem</value></data>
+  <data name="Recovery_ExportCopy" xml:space="preserve"><value>Guardar cópia…</value></data>
+  <data name="Recovery_Restore" xml:space="preserve"><value>Restaurar neste computador</value></data>
+  <data name="Recovery_Delete" xml:space="preserve"><value>Excluir</value></data>
+  <data name="Recovery_SelectCopy" xml:space="preserve"><value>Selecione uma cópia.</value></data>
+  <data name="Recovery_CloseGame" xml:space="preserve"><value>Feche o Valheim antes de restaurar.</value></data>
+  <data name="Recovery_RestorePrompt" xml:space="preserve"><value>Restaurar a cópia de {0:g}? O estado atual será preservado antes da troca.</value></data>
+  <data name="Recovery_RestoreTitle" xml:space="preserve"><value>Restaurar mundo</value></data>
+  <data name="Recovery_DeletePrompt" xml:space="preserve"><value>Excluir permanentemente esta cópia local?</value></data>
+  <data name="Recovery_DeleteTitle" xml:space="preserve"><value>Excluir cópia</value></data>
+  <data name="Recovery_Done" xml:space="preserve"><value>Operação concluída.</value></data>
+  <data name="Reset_Title" xml:space="preserve"><value>Reinicializar mundo remoto</value></data>
+  <data name="Reset_Heading" xml:space="preserve"><value>Substituir o mundo remoto</value></data>
+  <data name="Reset_Instruction" xml:space="preserve"><value>A versão atual será preservada. Digite '{0}' para confirmar.</value></data>
+  <data name="Reset_Acknowledge" xml:space="preserve"><value>Entendo que uma nova versão será publicada</value></data>
+  <data name="Reset_Confirm" xml:space="preserve"><value>Reinicializar</value></data>
+  <data name="Reset_Validation" xml:space="preserve"><value>Marque a confirmação e digite o nome exato.</value></data>
+  <data name="Invite_Title" xml:space="preserve"><value>Senha do convite</value></data>
+  <data name="Invite_Hint" xml:space="preserve"><value>Use pelo menos 3 caracteres e envie a senha separadamente do arquivo.</value></data>
+  <data name="Invite_Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="Invite_TooShort" xml:space="preserve"><value>A senha precisa ter pelo menos 3 caracteres.</value></data>
+  <data name="Tray_Open" xml:space="preserve"><value>Abrir Valheim World Sync</value></data>
+  <data name="Tray_Exit" xml:space="preserve"><value>Sair</value></data>
+  <data name="App_AlreadyOpen" xml:space="preserve"><value>Valheim World Sync já está aberto. Use o ícone na bandeja.</value></data>
+  <data name="App_RecoveryFailed" xml:space="preserve"><value>Não foi possível iniciar a recuperação. Os arquivos locais foram preservados.</value></data>
+  <data name="App_WaitSession" xml:space="preserve"><value>Aguarde a sessão ou sincronização terminar. Fechar a janela mantém o app na bandeja.</value></data>
+  <data name="Sync_Initial" xml:space="preserve"><value>Pronto para verificar o mundo.</value></data>
+  <data name="Sync_ResolveBeforePlay" xml:space="preserve"><value>Resolva a sessão pendente antes de jogar.</value></data>
+  <data name="Sync_Checking" xml:space="preserve"><value>Verificando disponibilidade do mundo…</value></data>
+  <data name="Sync_Acquiring" xml:space="preserve"><value>Reservando o mundo…</value></data>
+  <data name="Sync_NotPublished" xml:space="preserve"><value>Mundo ainda não publicado. Use Importar mundo local.</value></data>
+  <data name="Sync_Downloading" xml:space="preserve"><value>Baixando a versão mais recente…</value></data>
+  <data name="Sync_Preparing" xml:space="preserve"><value>Validando e instalando o save; cópia anterior será preservada…</value></data>
+  <data name="Sync_Launching" xml:space="preserve"><value>Abrindo Valheim pela Steam…</value></data>
+  <data name="Sync_Playing" xml:space="preserve"><value>Valheim aberto. Selecione o mundo configurado e inicie o servidor no jogo.</value></data>
+  <data name="Sync_SingleFolder" xml:space="preserve"><value>Selecione a pasta de um único mundo; origem e destino não podem conter uma à outra.</value></data>
+  <data name="Sync_ResolveBeforeImport" xml:space="preserve"><value>Resolva a sessão pendente antes de importar.</value></data>
+  <data name="Sync_AcquiringFirstImport" xml:space="preserve"><value>Reservando o mundo para a primeira importação…</value></data>
+  <data name="Sync_BucketHasWorld" xml:space="preserve"><value>O bucket já contém um mundo. A importação inicial não o substitui.</value></data>
+  <data name="Sync_CopyingSource" xml:space="preserve"><value>Copiando a origem para a pasta local usada pelo Valheim…</value></data>
+  <data name="Sync_Diverged" xml:space="preserve"><value>Há progresso local divergente. Exporte antes de voltar à versão da nuvem.</value></data>
+  <data name="Sync_PreparingRecovered" xml:space="preserve"><value>Preparação interrompida recuperada. Você pode jogar.</value></data>
+  <data name="Sync_Resuming" xml:space="preserve"><value>Retomando acompanhamento da sessão anterior…</value></data>
+  <data name="Sync_ResolveBeforeReset" xml:space="preserve"><value>Resolva a sessão pendente antes de reinicializar o mundo.</value></data>
+  <data name="Sync_RemoteReset" xml:space="preserve"><value>Mundo remoto reinicializado; a versão anterior foi preservada.</value></data>
+  <data name="Sync_KeptLocal" xml:space="preserve"><value>Cópia local preservada em Recuperação. Próximo Jogar usará a nuvem.</value></data>
+  <data name="Sync_Snapshotting" xml:space="preserve"><value>Guardando uma cópia completa do progresso local…</value></data>
+  <data name="Sync_SnapshotMissing" xml:space="preserve"><value>Snapshot pendente ausente.</value></data>
+  <data name="Sync_ConfirmingOwnership" xml:space="preserve"><value>Confirmando posse e versão-base para publicar…</value></data>
+  <data name="Sync_Uploading" xml:space="preserve"><value>Enviando o snapshot. O progresso já está salvo localmente…</value></data>
+  <data name="Sync_Publishing" xml:space="preserve"><value>Publicando a nova versão por CAS…</value></data>
+  <data name="Sync_Releasing" xml:space="preserve"><value>Concluindo a sincronização…</value></data>
+  <data name="Sync_SyncedCleanupPending" xml:space="preserve"><value>Mundo sincronizado. A limpeza de backups será retomada na próxima sincronização.</value></data>
+  <data name="Sync_Synced" xml:space="preserve"><value>Sincronizado. Mundo disponível para o próximo anfitrião.</value></data>
+  <data name="Sync_PendingRecovery" xml:space="preserve"><value>Há uma sessão local pendente de recuperação.</value></data>
+  <data name="Sync_InUseBy" xml:space="preserve"><value>Em uso por {0}. Entre pela lista de amigos/convite da Steam.</value></data>
+  <data name="Sync_NoWorldPublished" xml:space="preserve"><value>Nenhum mundo publicado. Importe a pasta local do mundo.</value></data>
+  <data name="Sync_WorldFree" xml:space="preserve"><value>Mundo livre. Pronto para jogar.</value></data>
+  <data name="Sync_ConfigChanged" xml:space="preserve"><value>Configuração mudou enquanto havia uma sessão pendente. Restaure a configuração anterior.</value></data>
+  <data name="Sync_CloseGame" xml:space="preserve"><value>Feche o Valheim antes de sincronizar arquivos locais.</value></data>
+  <data name="Sync_RenewFailed" xml:space="preserve"><value>Não foi possível renovar a posse. Progresso local será preservado; publicação depende de nova verificação.</value></data>
+  <data name="Sync_Interrupted" xml:space="preserve"><value>Operação interrompida. Recuperação será verificada na próxima abertura.</value></data>
+  <data name="Sync_MaybeAdvanced" xml:space="preserve"><value>Outra versão pode ter avançado. Progresso local preservado; exporte para recuperação manual.</value></data>
+  <data name="Sync_BusyNoPending" xml:space="preserve"><value>Em uso por {0}. Entre pela Steam.</value></data>
+  <data name="Sync_BusyPending" xml:space="preserve"><value>Progresso local salvo. Aguardando {0} liberar o mundo.</value></data>
+  <data name="Sync_Failed" xml:space="preserve"><value>Não foi possível concluir ({0}). Verifique rede e configuração. Dados locais preservados.</value></data>
+  <data name="Lease_Lost" xml:space="preserve"><value>A posse do mundo foi perdida.</value></data>
+  <data name="Lease_Busy" xml:space="preserve"><value>Mundo em uso por {0}.</value></data>
+  <data name="Lease_ConflictPublished" xml:space="preserve"><value>Outra versão foi publicada. O progresso local foi preservado.</value></data>
+  <data name="Lease_TooManyChanges" xml:space="preserve"><value>Muitas alterações concorrentes. Tente novamente.</value></data>
+  <data name="Lease_NewKeyRequired" xml:space="preserve"><value>Uma publicação deve usar uma chave nova.</value></data>
+  <data name="Game_AlreadyOpen" xml:space="preserve"><value>O Valheim já está aberto. Feche-o antes de usar Jogar.</value></data>
+  <data name="Game_MultipleInstances" xml:space="preserve"><value>Mais de uma instância do Valheim foi detectada.</value></data>
+  <data name="Game_NoSession" xml:space="preserve"><value>Não foi possível identificar a sessão do Valheim.</value></data>
+  <data name="Game_StartTimeout" xml:space="preserve"><value>Valheim não iniciou em três minutos. Verifique a Steam.</value></data>
+  <data name="Game_VerifySession" xml:space="preserve"><value>Não foi possível verificar a identidade da sessão.</value></data>
+  <data name="Manifest_Incompatible" xml:space="preserve"><value>Manifesto incompatível com o mundo configurado.</value></data>
+  <data name="Manifest_BadMetadata" xml:space="preserve"><value>Metadados do manifesto são inválidos.</value></data>
+  <data name="Manifest_Invalid" xml:space="preserve"><value>Manifesto inválido.</value></data>
+  <data name="Manifest_BadVersionRef" xml:space="preserve"><value>Referência de versão inválida.</value></data>
+  <data name="Manifest_BadDeleteQueue" xml:space="preserve"><value>Fila de exclusão inválida.</value></data>
+  <data name="Config_EndpointHttps" xml:space="preserve"><value>Endpoint deve ser a URL HTTPS S3 do Cloudflare R2.</value></data>
+  <data name="Config_FillFields" xml:space="preserve"><value>Preencha bucket, credenciais, jogador e WorldId em config.json.</value></data>
+  <data name="Config_BackupCountRange" xml:space="preserve"><value>BackupCount deve estar entre 0 e 1000.</value></data>
+  <data name="Config_FolderAndRoot" xml:space="preserve"><value>Configure uma raiz absoluta e um nome simples de pasta de mundo.</value></data>
+  <data name="Config_Empty" xml:space="preserve"><value>Configuração vazia.</value></data>
+  <data name="Install_BadIdentity" xml:space="preserve"><value>Identidade local da instalação inválida.</value></data>
+  <data name="Journal_Invalid" xml:space="preserve"><value>Diário local inválido.</value></data>
+  <data name="R2_ManifestTooLarge" xml:space="preserve"><value>Manifesto grande demais.</value></data>
+  <data name="R2_EmptyManifest" xml:space="preserve"><value>Manifesto vazio.</value></data>
+  <data name="R2_VersionCollision" xml:space="preserve"><value>Colisão de versão: objeto existente não corresponde ao snapshot.</value></data>
+  <data name="R2_HashMismatch" xml:space="preserve"><value>ZIP remoto não corresponde ao hash/tamanho publicado.</value></data>
+  <data name="R2_TestMismatch" xml:space="preserve"><value>O R2 devolveu conteúdo diferente no teste.</value></data>
+  <data name="R2_NoDeletePermission" xml:space="preserve"><value>A credencial R2 não possui permissão de exclusão.</value></data>
+  <data name="R2_BadSnapshotKey" xml:space="preserve"><value>Chave de snapshot inválida.</value></data>
+  <data name="Clock_NoSample" xml:space="preserve"><value>Servidor não forneceu uma referência de horário.</value></data>
+  <data name="Clock_StaleSample" xml:space="preserve"><value>Referência de horário expirada.</value></data>
+  <data name="Archive_WorldNotFound" xml:space="preserve"><value>Pasta do mundo não encontrada. Importe uma pasta de mundo 1.0.</value></data>
+  <data name="Archive_TooManyEntries" xml:space="preserve"><value>Mundo excede o limite de {0:N0} entradas.</value></data>
+  <data name="Archive_EmptyFolder" xml:space="preserve"><value>A pasta do mundo está vazia.</value></data>
+  <data name="Archive_TooLargeExpanded" xml:space="preserve"><value>Mundo excede o limite expandido de 32 GiB.</value></data>
+  <data name="Archive_ChangedDuringBackup" xml:space="preserve"><value>O save mudou durante o backup; tentativa adiada.</value></data>
+  <data name="Archive_InconsistentSnapshot" xml:space="preserve"><value>Snapshot inconsistente; arquivos locais preservados.</value></data>
+  <data name="Archive_WorldNotFoundShort" xml:space="preserve"><value>Pasta do mundo não encontrada.</value></data>
+  <data name="Archive_SnapshotOutside" xml:space="preserve"><value>Snapshot fora da pasta de recuperação.</value></data>
+  <data name="Archive_SnapshotChanged" xml:space="preserve"><value>Snapshot local alterado ou incompleto; exporte para recuperação manual.</value></data>
+  <data name="Archive_CloseGameInstall" xml:space="preserve"><value>Feche o Valheim antes de instalar o mundo.</value></data>
+  <data name="Archive_ZipMismatch" xml:space="preserve"><value>ZIP não corresponde à versão esperada.</value></data>
+  <data name="Archive_ZipTooManyEntries" xml:space="preserve"><value>ZIP excede o limite de {0:N0} entradas.</value></data>
+  <data name="Archive_ZipBadPaths" xml:space="preserve"><value>ZIP contém caminhos duplicados ou links.</value></data>
+  <data name="Archive_ZipOutsideWorld" xml:space="preserve"><value>ZIP contém caminho fora do mundo.</value></data>
+  <data name="Archive_ZipTooLargeExpanded" xml:space="preserve"><value>ZIP excede o limite expandido.</value></data>
+  <data name="Archive_ZipEntryIncomplete" xml:space="preserve"><value>Entrada ZIP incompleta.</value></data>
+  <data name="Archive_ExtractMismatch" xml:space="preserve"><value>Conteúdo extraído não corresponde ao inventário publicado.</value></data>
+  <data name="Archive_GameOpenedDuringPrep" xml:space="preserve"><value>O Valheim abriu durante a preparação. Instalação cancelada.</value></data>
+  <data name="Archive_GameOpenedDuringInstall" xml:space="preserve"><value>O Valheim abriu durante a instalação.</value></data>
+  <data name="Archive_CloseGameRecover" xml:space="preserve"><value>Feche o Valheim para recuperar uma instalação interrompida.</value></data>
+  <data name="Archive_WrongWorldJournal" xml:space="preserve"><value>Diário de instalação pertence a outro mundo.</value></data>
+  <data name="Archive_RecoveryFilesMissing" xml:space="preserve"><value>Arquivos de recuperação não encontrados.</value></data>
+  <data name="Archive_OutsideProfileRecovery" xml:space="preserve"><value>Arquivo fora da área de recuperação do perfil.</value></data>
+  <data name="Archive_LocalCopyChanged" xml:space="preserve"><value>Cópia local alterada ou incompleta.</value></data>
+  <data name="Archive_BadZipPath" xml:space="preserve"><value>Caminho ZIP inválido.</value></data>
+  <data name="Archive_BadFileName" xml:space="preserve"><value>Nome de arquivo inválido.</value></data>
+  <data name="Archive_DeviceName" xml:space="preserve"><value>Nome de dispositivo não permitido.</value></data>
+  <data name="Archive_SymlinksUnsupported" xml:space="preserve"><value>Links/junctions não são suportados para arquivos de mundo.</value></data>
+  <data name="Archive_WorldSymlink" xml:space="preserve"><value>Link no mundo não suportado.</value></data>
+  <data name="Archive_DataRootInsideWorld" xml:space="preserve"><value>A pasta de dados do aplicativo não pode ficar dentro da pasta do mundo.</value></data>
+  <data name="Profile_Exists" xml:space="preserve"><value>O perfil local já existe.</value></data>
+  <data name="Profile_NotFound" xml:space="preserve"><value>Perfil não encontrado.</value></data>
+  <data name="Profile_PendingSession" xml:space="preserve"><value>Resolva a sessão deste perfil antes de excluí-lo.</value></data>
+  <data name="Profile_InvalidSettings" xml:space="preserve"><value>Configurações locais inválidas.</value></data>
+  <data name="Profile_Invalid" xml:space="preserve"><value>Perfil local inválido.</value></data>
+  <data name="Profile_BadPrefix" xml:space="preserve"><value>Prefixo remoto inválido.</value></data>
+  <data name="InviteCodec_PasswordShort" xml:space="preserve"><value>A senha do convite deve ter pelo menos 3 caracteres.</value></data>
+  <data name="InviteCodec_Empty" xml:space="preserve"><value>Convite vazio.</value></data>
+  <data name="InviteCodec_BadVersion" xml:space="preserve"><value>Versão de convite incompatível.</value></data>
+  <data name="InviteCodec_Invalid" xml:space="preserve"><value>Convite inválido.</value></data>
+  <data name="InviteCodec_BadPassword" xml:space="preserve"><value>Senha incorreta ou convite alterado.</value></data>
+  <data name="InviteCodec_BadData" xml:space="preserve"><value>Dados do convite inválidos.</value></data>
+  <data name="Vault_ReadFailed" xml:space="preserve"><value>Não foi possível ler a credencial do Windows.</value></data>
+  <data name="Vault_Empty" xml:space="preserve"><value>A credencial armazenada está vazia.</value></data>
+  <data name="Vault_Invalid" xml:space="preserve"><value>A credencial armazenada é inválida.</value></data>
+  <data name="Vault_ProtectFailed" xml:space="preserve"><value>Não foi possível proteger a credencial no Windows (erro {0}).</value></data>
+  <data name="Vault_DeleteFailed" xml:space="preserve"><value>Não foi possível remover a credencial do Windows.</value></data>
+  <data name="Vault_BadProfileId" xml:space="preserve"><value>Identificador de perfil inválido.</value></data>
+  <data name="Vault_WindowsOnly" xml:space="preserve"><value>O Credential Manager requer Windows.</value></data>
+  <data name="Vault_BadTarget" xml:space="preserve"><value>Alvo de credencial inválido.</value></data>
+  <data name="Vault_Incomplete" xml:space="preserve"><value>As credenciais R2 estão incompletas.</value></data>
+  <data name="Guidance_SteamCloud" xml:space="preserve"><value>Possível mundo na Steam Cloud. No Valheim, abra Manage Saves → Worlds, selecione o mundo, use Move to Local e feche o jogo.</value></data>
+</root>
