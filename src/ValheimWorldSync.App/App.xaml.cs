@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Windows;
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Desktop.Tray;
 using ValheimWorldSync.Desktop.ViewModels;
 using ValheimWorldSync.Infrastructure.Configuration;
@@ -33,7 +34,7 @@ public partial class App : Application
         instance = new Mutex(true, "Local\\ValheimWorldSync-" + Environment.UserName, out ownsMutex);
         if (!ownsMutex)
         {
-            MessageBox.Show("Valheim World Sync já está aberto. Use o ícone na bandeja.", "Valheim World Sync");
+            MessageBox.Show(Strings.Get("App_AlreadyOpen"), "Valheim World Sync");
             Shutdown(); return;
         }
         model = new MainViewModel(Dispatcher);
@@ -45,7 +46,7 @@ public partial class App : Application
         try { await model.InitializeAsync(); }
         catch (Exception)
         {
-            MessageBox.Show("Não foi possível iniciar a recuperação. Os arquivos locais foram preservados.", "Valheim World Sync");
+            MessageBox.Show(Strings.Get("App_RecoveryFailed"), "Valheim World Sync");
         }
     }
     private static void ApplySavedCulture()
@@ -72,7 +73,7 @@ public partial class App : Application
         if (model?.CanExit != true)
         {
             if (window is not null) TrayController.Show(window);
-            MessageBox.Show("Aguarde a sessão ou sincronização terminar. Fechar a janela mantém o app na bandeja.", "Valheim World Sync");
+            MessageBox.Show(Strings.Get("App_WaitSession"), "Valheim World Sync");
             return;
         }
         if (window is not null) window.AllowClose = true;

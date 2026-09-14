@@ -1,3 +1,5 @@
+using ValheimWorldSync.Core.Localization;
+
 namespace ValheimWorldSync.Core.Models;
 
 public sealed record WorldVersion(string Id, string Key, string Sha256, string TreeHash, long Size, DateTimeOffset CreatedAt)
@@ -22,21 +24,21 @@ public sealed record WorldManifest
     public void Validate(string worldId)
     {
         if (SchemaVersion != 2 || SaveFormat != "valheim-1.0-directory" || WorldId != worldId)
-            throw new InvalidDataException("Manifesto incompatível com o mundo configurado.");
+            throw new InvalidDataException(Strings.Get("Manifest_Incompatible"));
         if (string.IsNullOrWhiteSpace(WorldDisplayName) ||
             string.IsNullOrWhiteSpace(WorldFolderName) || WorldFolderName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
             RetentionCount is < 0 or > 1000 or null)
-            throw new InvalidDataException("Metadados do manifesto são inválidos.");
+            throw new InvalidDataException(Strings.Get("Manifest_BadMetadata"));
         if (History is null || PendingDeletes is null || string.IsNullOrWhiteSpace(Revision))
-            throw new InvalidDataException("Manifesto inválido.");
+            throw new InvalidDataException(Strings.Get("Manifest_Invalid"));
         foreach (var version in History.Concat(Current is null ? [] : new[] { Current }))
         {
             if (!ValidKey(version.Key) || version.Size <= 0 || version.Sha256.Length != 64 || version.TreeHash.Length != 64)
-                throw new InvalidDataException("Referência de versão inválida.");
+                throw new InvalidDataException(Strings.Get("Manifest_BadVersionRef"));
         }
         if (PendingDeletes.Any(key => !ValidKey(key)) ||
             PendingDeletes.Any(key => Current?.Key == key || History.Any(v => v.Key == key)))
-            throw new InvalidDataException("Fila de exclusão inválida.");
+            throw new InvalidDataException(Strings.Get("Manifest_BadDeleteQueue"));
     }
     public static bool ValidKey(string key) => key.StartsWith("backups/", StringComparison.Ordinal) &&
         key.EndsWith(".zip", StringComparison.Ordinal) && !key.Contains("..") &&

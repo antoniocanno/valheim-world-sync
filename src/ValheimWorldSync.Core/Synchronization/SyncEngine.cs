@@ -1,4 +1,5 @@
 using ValheimWorldSync.Core.Abstractions;
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Core.Models;
 namespace ValheimWorldSync.Core.Synchronization;
 
@@ -16,7 +17,7 @@ public sealed class SyncEngine
     private readonly LeaseCoordinator lease;
     private readonly SemaphoreSlim operationGate = new(1, 1);
     public bool IsBusy { get; private set; }
-    public SyncStatus Status { get; private set; } = new(SyncState.Idle, "Pronto para verificar o mundo.");
+    public SyncStatus Status { get; private set; } = new(SyncState.Idle, Strings.Get("Sync_Initial"));
     public event Action<SyncStatus>? StatusChanged;
     public event Action<TransferProgress>? TransferProgressChanged;
     public SyncEngine(IWorldRepository repository, IWorldArchive archive, ISessionJournal journal, IGameSession game, SyncOptions options, TimeProvider? time = null)
@@ -30,38 +31,38 @@ public sealed class SyncEngine
 
     public Task PlayAsync(CancellationToken token = default) => Guard(async () =>
     {
-        if (await journal.ReadAsync(token) is not null) throw new InvalidDataException("Resolva a sessão pendente antes de jogar.");
+        if (await journal.ReadAsync(token) is not null) throw new InvalidDataException(Strings.Get("Sync_ResolveBeforePlay"));
         EnsureGameClosed();
         await archive.RecoverInstallAsync(options.WorldPath, () => game.IsRunning, token);
-        Set(SyncState.Checking, "Verificando disponibilidade do mundo…");
+        Set(SyncState.Checking, Strings.Get("Sync_Checking"));
         var sessionId = Guid.NewGuid().ToString("N");
-        Set(SyncState.Acquiring, "Reservando o mundo…");
+        Set(SyncState.Acquiring, Strings.Get("Sync_Acquiring"));
         var manifest = await lease.AcquireAsync(sessionId, token);
         if (manifest.Current is null)
         {
             await lease.ReleaseAsync(sessionId, token);
-            throw new InvalidDataException("Mundo ainda não publicado. Use Importar mundo local.");
+            throw new InvalidDataException(Strings.Get("Sync_NotPublished"));
         }
         var session = NewSession(sessionId, manifest.Current, false);
         await journal.WriteAsync(session, token);
         await WithHeartbeat(sessionId, async () =>
         {
-            Set(SyncState.Downloading, "Baixando a versão mais recente…");
+            Set(SyncState.Downloading, Strings.Get("Sync_Downloading"));
             var downloadRoot = Path.Combine(options.DataRoot, "downloads");
             Directory.CreateDirectory(downloadRoot);
             var download = Path.Combine(downloadRoot, sessionId + ".zip");
             await repository.DownloadAsync(manifest.Current, download, token, new CallbackProgress<TransferProgress>(p => TransferProgressChanged?.Invoke(p)));
-            Set(SyncState.Preparing, "Validando e instalando o save; cópia anterior será preservada…");
+            Set(SyncState.Preparing, Strings.Get("Sync_Preparing"));
             await archive.InstallAsync(manifest.Current, download, options.WorldPath, () => game.IsRunning, token);
             await lease.RenewAsync(sessionId, token); // Do not launch after losing ownership during download.
             EnsureGameClosed();
             session = session with { Stage = SessionStage.Launching };
             await journal.WriteAsync(session, token);
-            Set(SyncState.Launching, "Abrindo Valheim pela Steam…");
+            Set(SyncState.Launching, Strings.Get("Sync_Launching"));
             var identity = await game.LaunchAsync(token);
             session = session with { Stage = SessionStage.Playing, Game = identity };
             await journal.WriteAsync(session, token);
-            Set(SyncState.Playing, "Valheim aberto. Selecione o mundo configurado e inicie o servidor no jogo.");
+            Set(SyncState.Playing, Strings.Get("Sync_Playing"));
             await game.WaitForExitAsync(identity, token);
             await CaptureAndPublish(session, token);
         }, token);
@@ -75,22 +76,22 @@ public sealed class SyncEngine
         if (!string.Equals(sourceWorldPath.TrimEnd(Path.DirectorySeparatorChar),
                 destinationWorldPath.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase) &&
             (IsAncestorOf(sourceWorldPath, destinationWorldPath) || IsAncestorOf(destinationWorldPath, sourceWorldPath)))
-            throw new InvalidDataException("Selecione a pasta de um único mundo; origem e destino não podem conter uma à outra.");
-        if (await journal.ReadAsync(token) is not null) throw new InvalidDataException("Resolva a sessão pendente antes de importar.");
+            throw new InvalidDataException(Strings.Get("Sync_SingleFolder"));
+        if (await journal.ReadAsync(token) is not null) throw new InvalidDataException(Strings.Get("Sync_ResolveBeforeImport"));
         await archive.RecoverInstallAsync(options.WorldPath, () => game.IsRunning, token);
         var sessionId = Guid.NewGuid().ToString("N");
-        Set(SyncState.Acquiring, "Reservando o mundo para a primeira importação…");
+        Set(SyncState.Acquiring, Strings.Get("Sync_AcquiringFirstImport"));
         var manifest = await lease.AcquireAsync(sessionId, token);
         if (manifest.Current is not null)
         {
             await lease.ReleaseAsync(sessionId, token);
-            throw new InvalidDataException("O bucket já contém um mundo. A importação inicial não o substitui.");
+            throw new InvalidDataException(Strings.Get("Sync_BucketHasWorld"));
         }
         var session = NewSession(sessionId, null, true);
         await journal.WriteAsync(session, token);
         await WithHeartbeat(sessionId, async () =>
         {
-            Set(SyncState.LocalBackup, "Copiando a origem para a pasta local usada pelo Valheim…");
+            Set(SyncState.LocalBackup, Strings.Get("Sync_CopyingSource"));
             var snapshot = await archive.CreateAsync(sourceWorldPath, token);
             if (!string.Equals(sourceWorldPath.TrimEnd(Path.DirectorySeparatorChar),
                     Path.GetFullPath(options.WorldPath).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
@@ -113,7 +114,7 @@ public sealed class SyncEngine
             return;
         }
         ValidateSession(session);
-        if (session.Stage == SessionStage.Conflict) { Set(SyncState.Conflict, "Há progresso local divergente. Exporte antes de voltar à versão da nuvem."); return; }
+        if (session.Stage == SessionStage.Conflict) { Set(SyncState.Conflict, Strings.Get("Sync_Diverged")); return; }
         if (session.Stage == SessionStage.Launching)
             throw new WorldConflictException(); // A crash may have occurred between launch and saving the PID.
         if (session.Stage == SessionStage.SnapshotPending)
@@ -124,14 +125,14 @@ public sealed class SyncEngine
             await archive.RecoverInstallAsync(options.WorldPath, () => game.IsRunning, token);
             await lease.ReleaseAsync(session.SessionId, token);
             await journal.ClearAsync(token);
-            Set(SyncState.Idle, "Preparação interrompida recuperada. Você pode jogar.");
+            Set(SyncState.Idle, Strings.Get("Sync_PreparingRecovered"));
             return;
         }
         await WithHeartbeat(session.SessionId, async () =>
         {
             if (session.Stage == SessionStage.Playing && session.Game is { } identity)
             {
-                Set(SyncState.Playing, "Retomando acompanhamento da sessão anterior…");
+                Set(SyncState.Playing, Strings.Get("Sync_Resuming"));
                 await game.WaitForExitAsync(identity, token);
             }
             EnsureGameClosed();
@@ -146,7 +147,7 @@ public sealed class SyncEngine
     public Task ResetRemoteAsync(string sourceWorldPath, CancellationToken token = default) => Guard(async () =>
     {
         EnsureGameClosed();
-        if (await journal.ReadAsync(token) is not null) throw new InvalidDataException("Resolva a sessão pendente antes de reinicializar o mundo.");
+        if (await journal.ReadAsync(token) is not null) throw new InvalidDataException(Strings.Get("Sync_ResolveBeforeReset"));
         var sessionId = Guid.NewGuid().ToString("N");
         var manifest = await lease.AcquireAsync(sessionId, token);
         try
@@ -168,7 +169,7 @@ public sealed class SyncEngine
                 await lease.PublishAsync(sessionId, manifest.Current?.Id, snapshot.Version, token);
                 await new BackupRetention(repository, lease).PruneAsync(sessionId, options.BackupCount, token);
             }, token);
-            Set(SyncState.Idle, "Mundo remoto reinicializado; a versão anterior foi preservada.");
+            Set(SyncState.Idle, Strings.Get("Sync_RemoteReset"));
         }
         finally { try { await lease.ReleaseAsync(sessionId, CancellationToken.None); } catch { } }
     }, token);
@@ -187,7 +188,7 @@ public sealed class SyncEngine
         await journal.WriteAsync(session with { Snapshot = snapshot, Stage = SessionStage.Conflict }, token);
         await lease.ReleaseAsync(session.SessionId, token);
         await journal.ClearAsync(token);
-        Set(SyncState.Idle, "Cópia local preservada em Recuperação. Próximo Jogar usará a nuvem.");
+        Set(SyncState.Idle, Strings.Get("Sync_KeptLocal"));
     }, token);
 
     private async Task CaptureAndPublish(SessionRecord session, CancellationToken token)
@@ -195,7 +196,7 @@ public sealed class SyncEngine
         EnsureSafeToCapture();
         session = session with { Stage = SessionStage.SnapshotPending };
         await journal.WriteAsync(session, token);
-        Set(SyncState.LocalBackup, "Guardando uma cópia completa do progresso local…");
+        Set(SyncState.LocalBackup, Strings.Get("Sync_Snapshotting"));
         var snapshot = await archive.CreateAsync(options.WorldPath, token);
         EnsureSafeToCapture();
         session = session with { Stage = SessionStage.Ready, Snapshot = snapshot };
@@ -205,7 +206,7 @@ public sealed class SyncEngine
     private async Task PublishPending(SessionRecord session, CancellationToken token)
     {
         EnsureGameClosed();
-        var snapshot = session.Snapshot ?? throw new InvalidDataException("Snapshot pendente ausente.");
+        var snapshot = session.Snapshot ?? throw new InvalidDataException(Strings.Get("Sync_SnapshotMissing"));
         if (string.IsNullOrWhiteSpace(snapshot.Version.CreatedBy))
         {
             snapshot = snapshot with { Version = snapshot.Version with { CreatedBy = options.Player } };
@@ -214,7 +215,7 @@ public sealed class SyncEngine
         }
         await archive.VerifyAsync(snapshot, token);
         await EnsureLocalMatchesSnapshot(snapshot, token);
-        Set(SyncState.Acquiring, "Confirmando posse e versão-base para publicar…");
+        Set(SyncState.Acquiring, Strings.Get("Sync_ConfirmingOwnership"));
         var manifest = await lease.AcquireAsync(session.SessionId, token);
         if (manifest.Current?.Id == snapshot.Version.Id)
         {
@@ -232,11 +233,11 @@ public sealed class SyncEngine
             await lease.ReleaseAsync(session.SessionId, token);
             throw new WorldConflictException();
         }
-        Set(SyncState.Uploading, "Enviando o snapshot. O progresso já está salvo localmente…");
+        Set(SyncState.Uploading, Strings.Get("Sync_Uploading"));
         await repository.UploadAsync(snapshot.Version, snapshot.Path, token, new CallbackProgress<TransferProgress>(p => TransferProgressChanged?.Invoke(p)));
         await EnsureLocalMatchesSnapshot(snapshot, token);
         await lease.RenewAsync(session.SessionId, token);
-        Set(SyncState.Publishing, "Publicando a nova versão por CAS…");
+        Set(SyncState.Publishing, Strings.Get("Sync_Publishing"));
         await lease.PublishAsync(session.SessionId, session.BaseVersion?.Id, snapshot.Version, token);
         await Finish(session, token);
     }
@@ -246,23 +247,23 @@ public sealed class SyncEngine
         try { await new BackupRetention(repository, lease).PruneAsync(session.SessionId, options.BackupCount, token); }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
         catch (Exception) { cleanupPending = true; }
-        Set(SyncState.Releasing, "Concluindo a sincronização…");
+        Set(SyncState.Releasing, Strings.Get("Sync_Releasing"));
         await lease.ReleaseAsync(session.SessionId, token);
         await journal.ClearAsync(token);
-        Set(SyncState.Idle, cleanupPending ? "Mundo sincronizado. A limpeza de backups será retomada na próxima sincronização." : "Sincronizado. Mundo disponível para o próximo anfitrião.");
+        Set(SyncState.Idle, cleanupPending ? Strings.Get("Sync_SyncedCleanupPending") : Strings.Get("Sync_Synced"));
     }
     private async Task RefreshCore(CancellationToken token)
     {
         if (await journal.ReadAsync(token) is { } pending)
         {
             ValidateSession(pending);
-            Set(pending.Stage == SessionStage.Conflict ? SyncState.Conflict : SyncState.Pending, "Há uma sessão local pendente de recuperação.");
+            Set(pending.Stage == SessionStage.Conflict ? SyncState.Conflict : SyncState.Pending, Strings.Get("Sync_PendingRecovery"));
             return;
         }
         var snapshot = await repository.ReadAsync(token);
         if (snapshot?.Manifest.Lease is { } owner && owner.ExpiresAt + TimeSpan.FromSeconds(2) > repository.UtcNow)
-            Set(SyncState.InUse, $"Em uso por {owner.Player}. Entre pela lista de amigos/convite da Steam.");
-        else Set(SyncState.Idle, snapshot?.Manifest.Current is null ? "Nenhum mundo publicado. Importe a pasta local do mundo." : "Mundo livre. Pronto para jogar.");
+            Set(SyncState.InUse, Strings.Format("Sync_InUseBy", owner.Player));
+        else Set(SyncState.Idle, snapshot?.Manifest.Current is null ? Strings.Get("Sync_NoWorldPublished") : Strings.Get("Sync_WorldFree"));
     }
     private SessionRecord NewSession(string id, WorldVersion? baseVersion, bool import) => new()
     {
@@ -278,10 +279,10 @@ public sealed class SyncEngine
     {
         if (session.WorldId != options.WorldId || session.RepositoryIdentity != options.RepositoryIdentity ||
             !string.Equals(session.WorldPath, Path.GetFullPath(options.WorldPath), StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("Configuração mudou enquanto havia uma sessão pendente. Restaure a configuração anterior.");
+            throw new InvalidDataException(Strings.Get("Sync_ConfigChanged"));
     }
     private void EnsureGameClosed()
-    { if (game.IsRunning) throw new IOException("Feche o Valheim antes de sincronizar arquivos locais."); }
+    { if (game.IsRunning) throw new IOException(Strings.Get("Sync_CloseGame")); }
     private void EnsureSafeToCapture()
     { if (game.IsRunning) throw new WorldConflictException(); }
     private async Task EnsureLocalMatchesSnapshot(LocalSnapshot snapshot, CancellationToken token)
@@ -316,7 +317,7 @@ public sealed class SyncEngine
             catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
             catch (Exception)
             {
-                Set(Status.State, "Não foi possível renovar a posse. Progresso local será preservado; publicação depende de nova verificação.");
+                Set(Status.State, Strings.Get("Sync_RenewFailed"));
             }
         }
     }
@@ -326,25 +327,25 @@ public sealed class SyncEngine
         IsBusy = true;
         try { await action(); }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
-        { Set(SyncState.Pending, "Operação interrompida. Recuperação será verificada na próxima abertura."); }
+        { Set(SyncState.Pending, Strings.Get("Sync_Interrupted")); }
         catch (WorldConflictException)
         {
             var session = await journal.ReadAsync(CancellationToken.None);
             if (session is not null) await journal.WriteAsync(session with { Stage = SessionStage.Conflict }, CancellationToken.None);
-            Set(SyncState.Conflict, "Outra versão pode ter avançado. Progresso local preservado; exporte para recuperação manual.");
+            Set(SyncState.Conflict, Strings.Get("Sync_MaybeAdvanced"));
         }
         catch (WorldBusyException e)
         {
             var pending = await journal.ReadAsync(CancellationToken.None);
             Set(pending is null ? SyncState.InUse : SyncState.Pending,
-                pending is null ? $"Em uso por {e.Player}. Entre pela Steam." : $"Progresso local salvo. Aguardando {e.Player} liberar o mundo.");
+                pending is null ? Strings.Format("Sync_BusyNoPending", e.Player) : Strings.Format("Sync_BusyPending", e.Player));
         }
         catch (InvalidDataException e) { Set(SyncState.Error, e.Message); }
         catch (Exception e)
         {
             var pending = await journal.ReadAsync(CancellationToken.None);
             Set(pending is null ? SyncState.Offline : SyncState.Pending,
-                $"Não foi possível concluir ({e.GetType().Name}). Verifique rede e configuração. Dados locais preservados.");
+                Strings.Format("Sync_Failed", e.GetType().Name));
         }
         finally { IsBusy = false; operationGate.Release(); StatusChanged?.Invoke(Status); }
     }

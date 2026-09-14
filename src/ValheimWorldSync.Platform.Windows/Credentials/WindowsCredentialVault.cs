@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
+using ValheimWorldSync.Core.Localization;
 
 namespace ValheimWorldSync.Platform.Windows.Credentials;
 
@@ -19,20 +20,20 @@ public sealed class WindowsCredentialVault : ICredentialVault
         {
             var error = Marshal.GetLastWin32Error();
             if (error == NotFound) return Task.FromResult<R2Credentials?>(null);
-            throw new Win32Exception(error, "Não foi possível ler a credencial do Windows.");
+            throw new Win32Exception(error, Strings.Get("Vault_ReadFailed"));
         }
 
         try
         {
             var native = Marshal.PtrToStructure<NativeCredential>(pointer);
             if (native.CredentialBlob == IntPtr.Zero || native.CredentialBlobSize == 0)
-                throw new InvalidDataException("A credencial armazenada está vazia.");
+                throw new InvalidDataException(Strings.Get("Vault_Empty"));
             var bytes = new byte[native.CredentialBlobSize];
             Marshal.Copy(native.CredentialBlob, bytes, 0, bytes.Length);
             try
             {
                 var credentials = JsonSerializer.Deserialize<R2Credentials>(bytes)
-                    ?? throw new InvalidDataException("A credencial armazenada é inválida.");
+                    ?? throw new InvalidDataException(Strings.Get("Vault_Invalid"));
                 credentials.Validate();
                 return Task.FromResult<R2Credentials?>(credentials);
             }
@@ -63,7 +64,7 @@ public sealed class WindowsCredentialVault : ICredentialVault
             if (!CredWrite(ref native, 0))
             {
                 var error = Marshal.GetLastWin32Error();
-                throw new Win32Exception(error, $"Não foi possível proteger a credencial no Windows (erro {error}).");
+                throw new Win32Exception(error, Strings.Format("Vault_ProtectFailed", error));
             }
         }
         finally
@@ -83,22 +84,22 @@ public sealed class WindowsCredentialVault : ICredentialVault
         {
             var error = Marshal.GetLastWin32Error();
             if (error != NotFound)
-                throw new Win32Exception(error, "Não foi possível remover a credencial do Windows.");
+                throw new Win32Exception(error, Strings.Get("Vault_DeleteFailed"));
         }
         return Task.CompletedTask;
     }
 
     public static string TargetFor(string profileId)
     {
-        if (!Guid.TryParse(profileId, out _)) throw new ArgumentException("Identificador de perfil inválido.", nameof(profileId));
+        if (!Guid.TryParse(profileId, out _)) throw new ArgumentException(Strings.Get("Vault_BadProfileId"), nameof(profileId));
         return $"ValheimWorldSync/profile/{profileId}/r2";
     }
 
     private static void EnsureWindowsAndTarget(string target)
     {
-        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("O Credential Manager requer Windows.");
+        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException(Strings.Get("Vault_WindowsOnly"));
         if (string.IsNullOrWhiteSpace(target) || target.Length > 32767 || target.Contains('\0'))
-            throw new ArgumentException("Alvo de credencial inválido.", nameof(target));
+            throw new ArgumentException(Strings.Get("Vault_BadTarget"), nameof(target));
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

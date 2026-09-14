@@ -1,3 +1,4 @@
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Infrastructure.Recovery;
 
 namespace ValheimWorldSync.Infrastructure.Configuration;
@@ -11,7 +12,7 @@ public sealed record InstallationIdentity(string Id)
         if (existing is not null)
         {
             if (!Guid.TryParseExact(existing.Id, "N", out _))
-                throw new InvalidDataException("Identidade local da instalação inválida.");
+                throw new InvalidDataException(Strings.Get("Install_BadIdentity"));
             return existing;
         }
 

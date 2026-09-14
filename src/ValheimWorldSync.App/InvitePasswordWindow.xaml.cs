@@ -1,4 +1,5 @@
 using System.Windows;
+using ValheimWorldSync.Core.Localization;
 namespace ValheimWorldSync.Desktop;
 
 public partial class InvitePasswordWindow : Window
@@ -7,7 +8,7 @@ public partial class InvitePasswordWindow : Window
     public InvitePasswordWindow() { InitializeComponent(); }
     private void ContinueClicked(object sender, RoutedEventArgs e)
     {
-        if (Password.Length < 3) { ErrorText.Text = "A senha precisa ter pelo menos 3 caracteres."; return; }
+        if (Password.Length < 3) { ErrorText.Text = Strings.Get("Invite_TooShort"); return; }
         DialogResult = true;
     }
 }

@@ -1,3 +1,4 @@
+using ValheimWorldSync.Core.Localization;
 using ValheimWorldSync.Infrastructure.Configuration;
 using ValheimWorldSync.Infrastructure.Recovery;
 using ValheimWorldSync.Platform.Windows.Credentials;
@@ -48,7 +49,7 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
         local = local with { CredentialTarget = WindowsCredentialVault.TargetFor(id) };
         Validate(id, connection, local);
         var root = Path.Combine(ProfilesRoot, id);
-        if (Directory.Exists(root)) throw new IOException("O perfil local já existe.");
+        if (Directory.Exists(root)) throw new IOException(Strings.Get("Profile_Exists"));
         await vault.WriteAsync(local.CredentialTarget, credentials, token);
         try
         {
@@ -81,13 +82,13 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
     public async Task SelectAsync(string profileId, CancellationToken token = default)
     {
         var catalog = await LoadAsync(token);
-        if (catalog.Profiles.All(candidate => candidate.Id != profileId)) throw new InvalidDataException("Perfil não encontrado.");
+        if (catalog.Profiles.All(candidate => candidate.Id != profileId)) throw new InvalidDataException(Strings.Get("Profile_NotFound"));
         await SaveSettingsAsync(catalog.Settings with { SelectedProfileId = profileId }, token);
     }
 
     public async Task DeleteAsync(WorldProfile profile, CancellationToken token = default)
     {
-        if (File.Exists(Path.Combine(profile.Root, "session.json"))) throw new InvalidDataException("Resolva a sessão deste perfil antes de excluí-lo.");
+        if (File.Exists(Path.Combine(profile.Root, "session.json"))) throw new InvalidDataException(Strings.Get("Profile_PendingSession"));
         await vault.DeleteAsync(profile.Local.CredentialTarget, token);
         if (Directory.Exists(profile.Root)) Directory.Delete(profile.Root, true);
         var settings = (await LoadAsync(token)).Settings;
@@ -108,7 +109,7 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
         if ((settings.SchemaVersion != 1 && settings.SchemaVersion != 2) ||
             string.IsNullOrWhiteSpace(settings.PlayerName) || settings.PlayerName.Length > 80 ||
             (settings.SchemaVersion == 2 && !AppLanguage.IsSupported(settings.Language)))
-            throw new InvalidDataException("Configurações locais inválidas.");
+            throw new InvalidDataException(Strings.Get("Profile_InvalidSettings"));
     }
     private static void Validate(string id, ProfileConnection connection, ProfileLocalSettings local)
     {
@@ -116,7 +117,7 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
             string.IsNullOrWhiteSpace(connection.WorldDisplayName) || string.IsNullOrWhiteSpace(connection.WorldFolderName) ||
             connection.WorldFolderName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || connection.RetentionCount is < 0 or > 1000 ||
             (!string.IsNullOrWhiteSpace(local.SavesRootOverride) && !Path.IsPathFullyQualified(local.SavesRootOverride)))
-            throw new InvalidDataException("Perfil local inválido.");
+            throw new InvalidDataException(Strings.Get("Profile_Invalid"));
         new AppConfiguration
         {
             Endpoint = connection.Endpoint,
@@ -129,6 +130,6 @@ public sealed class ProfileStore(string dataRoot, ICredentialVault vault)
             SavesRoot = local.SavesRootOverride ?? ValheimLocations.DefaultWorldsLocal,
             BackupCount = connection.RetentionCount
         }.ValidateRemote();
-        if (connection.RemotePrefix != $"worlds/{connection.WorldId}/") throw new InvalidDataException("Prefixo remoto inválido.");
+        if (connection.RemotePrefix != $"worlds/{connection.WorldId}/") throw new InvalidDataException(Strings.Get("Profile_BadPrefix"));
     }
 }

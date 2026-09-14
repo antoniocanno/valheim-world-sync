@@ -63,7 +63,7 @@ public partial class SettingsWindow : Window
     private void NewClicked(object sender, RoutedEventArgs e) => ClearForNew();
     private void ChooseWorldClicked(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFolderDialog { Title = "Escolha a pasta completa de um mundo local do Valheim 1.0" };
+        var dialog = new OpenFolderDialog { Title = Strings.Get("Common_WorldFolderTitle") };
         if (dialog.ShowDialog(this) != true) return;
         var folder = new DirectoryInfo(dialog.FolderName);
         FolderBox.Text = folder.Name;
@@ -83,19 +83,19 @@ public partial class SettingsWindow : Window
         if (isInsideSaves)
         {
             pendingImportSource = null;
-            ResultText.Text = $"Mundo detectado dentro de '{expectedParent}'. Nenhuma cópia necessária ao salvar.";
+            ResultText.Text = Strings.Format("Settings_DetectedInside", expectedParent);
         }
         else
         {
             pendingImportSource = folder.FullName;
-            ResultText.Text = $"Mundo selecionado fora da pasta de saves. Ao salvar, '{folder.Name}' será copiado para '{expectedParent}'.";
+            ResultText.Text = Strings.Format("Settings_SelectedOutside", folder.Name, expectedParent);
         }
     }
     private void ChooseSavesRootClicked(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog
         {
-            Title = "Escolha a pasta raiz de saves locais do Valheim (ex: worlds_local)",
+            Title = Strings.Get("Settings_ChooseSavesTitle"),
             InitialDirectory = Directory.Exists(SavesBox.Text) ? SavesBox.Text : ValheimLocations.DefaultWorldsLocal
         };
         if (dialog.ShowDialog(this) == true) SavesBox.Text = dialog.FolderName;
@@ -104,11 +104,11 @@ public partial class SettingsWindow : Window
     {
         selected = null; ProfilesBox.SelectedItem = null; EndpointBox.Clear(); BucketBox.Clear(); AccessBox.Clear(); SecretBox.Clear();
         RetentionBox.Text = "10"; AliasBox.Clear(); WorldIdBox.Text = Guid.NewGuid().ToString("N");
-        DisplayBox.Clear(); FolderBox.Clear(); SavesBox.Text = ValheimLocations.DefaultWorldsLocal; ResultText.Text = "Novo perfil.";
+        DisplayBox.Clear(); FolderBox.Clear(); SavesBox.Text = ValheimLocations.DefaultWorldsLocal; ResultText.Text = Strings.Get("Settings_NewProfile");
     }
     private (ProfileConnection Connection, ProfileLocalSettings Local, R2Credentials? Credentials) Values()
     {
-        if (!int.TryParse(RetentionBox.Text, out var retention)) throw new InvalidDataException("Retenção inválida.");
+        if (!int.TryParse(RetentionBox.Text, out var retention)) throw new InvalidDataException(Strings.Get("Settings_RetentionInvalid"));
         var worldId = WorldIdBox.Text.Trim();
         var connection = new ProfileConnection
         {
@@ -133,10 +133,10 @@ public partial class SettingsWindow : Window
     {
         var (connection, _, entered) = Values();
         var credentials = entered ?? (selected is null ? null : await store.ReadCredentialsAsync(selected))
-            ?? throw new InvalidDataException("Informe as credenciais.");
+             ?? throw new InvalidDataException(Strings.Get("Settings_CredentialsRequired"));
         using var repository = new R2WorldRepository(ToConfiguration(connection, credentials), connection.RemotePrefix);
         await repository.TestConnectionAsync();
-        ResultText.Text = "Conexão validada: leitura, escrita e exclusão disponíveis.";
+        ResultText.Text = Strings.Get("Settings_ConnectionOk");
     });
     private async void SaveClicked(object sender, RoutedEventArgs e) => await Run(async () =>
     {
@@ -149,10 +149,10 @@ public partial class SettingsWindow : Window
                 : Path.GetFullPath(local.SavesRootOverride);
             var destination = Path.Combine(savesRoot, connection.WorldFolderName);
             if (MessageBox.Show(
-                $"Copiar '{pendingImportSource}' para a pasta de saves do Valheim?\n\nDestino: {destination}\n\nA origem será preservada. Se o destino existir, será sobrescrito.",
-                "Copiar mundo para pasta de saves",
+                Strings.Format("Settings_CopyPrompt", pendingImportSource, destination),
+                Strings.Get("Settings_CopyTitle"),
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
-                throw new InvalidDataException("Operação cancelada pelo usuário.");
+                throw new InvalidDataException(Strings.Get("Settings_Cancelled"));
             Directory.CreateDirectory(destination);
             foreach (var file in Directory.EnumerateFiles(pendingImportSource))
                 File.Copy(file, Path.Combine(destination, Path.GetFileName(file)), overwrite: true);
@@ -162,7 +162,7 @@ public partial class SettingsWindow : Window
 
         WorldProfile profile;
         if (selected is null) profile = await store.CreateAsync(connection, local,
-            credentials ?? throw new InvalidDataException("Informe as credenciais."));
+            credentials ?? throw new InvalidDataException(Strings.Get("Settings_CredentialsRequired")));
         else
         {
             await store.UpdateAsync(selected, connection, local, credentials);
@@ -181,28 +181,28 @@ public partial class SettingsWindow : Window
     });
     private async void DeleteClicked(object sender, RoutedEventArgs e)
     {
-        if (selected is null || MessageBox.Show("Excluir este perfil local? O mundo remoto não será removido.",
-            "Excluir perfil", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (selected is null || MessageBox.Show(Strings.Get("Settings_DeletePrompt"),
+            Strings.Get("Settings_DeleteTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         await Run(async () => { await store.DeleteAsync(selected); await Reload(); });
     }
     private async void ExportInviteClicked(object sender, RoutedEventArgs e)
     {
-        if (selected is null) { ResultText.Text = "Selecione um perfil."; return; }
+        if (selected is null) { ResultText.Text = Strings.Get("Settings_SelectProfile"); return; }
         var password = AskPassword(); if (password is null) return;
-        var dialog = new SaveFileDialog { Filter = "Convite Valheim World Sync|*.vwsinvite", FileName = selected.Connection.WorldDisplayName + ".vwsinvite" };
+        var dialog = new SaveFileDialog { Filter = Strings.Get("Settings_InviteFilter"), FileName = selected.Connection.WorldDisplayName + ".vwsinvite" };
         if (dialog.ShowDialog(this) != true) return;
         await Run(async () =>
         {
-            var credentials = await store.ReadCredentialsAsync(selected) ?? throw new InvalidDataException("Credenciais não encontradas.");
+            var credentials = await store.ReadCredentialsAsync(selected) ?? throw new InvalidDataException(Strings.Get("Settings_CredentialsMissing"));
             var c = selected.Connection;
             await new InvitationCodec().WriteAsync(dialog.FileName, new(c.Endpoint, c.Bucket, c.RemotePrefix, c.WorldId,
                 c.WorldDisplayName, c.WorldFolderName, c.RetentionCount, credentials), password);
-            ResultText.Text = "Convite protegido exportado. Envie a senha separadamente.";
+            ResultText.Text = Strings.Get("Settings_InviteExported");
         });
     }
     private async void ImportInviteClicked(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Filter = "Convite Valheim World Sync|*.vwsinvite" };
+        var dialog = new OpenFileDialog { Filter = Strings.Get("Settings_InviteFilter") };
         if (dialog.ShowDialog(this) != true) return;
         var password = AskPassword(); if (password is null) return;
         await Run(async () =>

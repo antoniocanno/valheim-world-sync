@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using ValheimWorldSync.Infrastructure.Recovery;
@@ -78,12 +79,27 @@ public sealed class ArchiveTests : IDisposable
     [Fact]
     public async Task RejectsDataDirectoryNestedInsideWorld()
     {
-        var world = Path.Combine(root, "world");
-        Directory.CreateDirectory(world);
-        await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "data");
-        var archive = new WorldArchive(Path.Combine(world, ".app-data"), "test");
-        var error = await Assert.ThrowsAsync<InvalidDataException>(() => archive.CreateAsync(world));
-        Assert.Contains("dentro da pasta do mundo", error.Message);
+        foreach (var (culture, fragment) in new[] { ("en-US", "inside the world folder"), ("pt-BR", "dentro da pasta do mundo") })
+        {
+            var previousCulture = CultureInfo.CurrentCulture;
+            var previousUiCulture = CultureInfo.CurrentUICulture;
+            try
+            {
+                CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+                var world = Path.Combine(root, "world-" + culture);
+                Directory.CreateDirectory(world);
+                await File.WriteAllTextAsync(Path.Combine(world, "chunk"), "data");
+                var archive = new WorldArchive(Path.Combine(world, ".app-data"), "test");
+                var error = await Assert.ThrowsAsync<InvalidDataException>(() => archive.CreateAsync(world));
+                Assert.Contains(fragment, error.Message);
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = previousCulture;
+                CultureInfo.CurrentUICulture = previousUiCulture;
+            }
+        }
     }
     [Fact]
     public async Task RecoveryPromotesStagingWhenNoPreviousWorldExists()
