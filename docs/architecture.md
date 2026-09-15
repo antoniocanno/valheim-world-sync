@@ -1,15 +1,15 @@
-# Arquitetura
+# Architecture
 
-O Core contém lease, CAS, estados e contratos. Infrastructure implementa R2, ZIP, diários e recuperação. Platform.Windows contém Credential Manager, descoberta dos saves e processo do Valheim. App compõe os serviços e apresenta WPF com NotifyIcon.
+The Core contains lease, CAS, states, and contracts. Infrastructure implements R2, ZIP, journals, and recovery. Platform.Windows contains Credential Manager, save discovery, and the Valheim process. App composes the services and presents WPF with NotifyIcon.
 
-Cada instalação possui identidade global e jogador local. Perfis isolam conexão, caminho opcional, sessão, logs, downloads e recuperação. Credenciais ficam no Windows Credential Manager. Cada mundo usa `worlds/<worldId>/` como prefixo remoto.
+Each installation has a global identity and a local player. Profiles isolate connection, optional path, session, logs, downloads, and recovery. Credentials live in the Windows Credential Manager. Each world uses `worlds/<worldId>/` as its remote prefix.
 
-`lock.json` é o manifesto autoritativo no schema v2, com nome exibido, pasta canônica, retenção e autor. Toda mutação usa ETag e compare-and-swap. O ZIP é imutável e enviado antes de mudar `Current`; a versão anterior entra em `History`.
+`lock.json` is the authoritative manifest in schema v2, with display name, canonical folder, retention, and author. Every mutation uses ETag and compare-and-swap. The ZIP is immutable and uploaded before changing `Current`; the previous version goes into `History`.
 
-Heartbeat ocorre a cada 60 segundos e a lease expira em 180 segundos. Download, jogo, snapshot, upload, reset e backoff permanecem cobertos. Uma sessão só publica se ainda possuir a lease e a versão-base não tiver avançado.
+Heartbeat occurs every 60 seconds and the lease expires after 180 seconds. Download, game, snapshot, upload, reset, and backoff remain covered. A session only publishes if it still holds the lease and the base version has not advanced.
 
-Instalações extraem em `.vws-work-*` fora de `worlds_local`, registram `install.json`, renomeiam no mesmo volume e preservam o mundo anterior como ZIP verificado. O catálogo local não remove cópias automaticamente.
+Installations extract to `.vws-work-*` outside `worlds_local`, register `install.json`, rename within the same volume, and preserve the previous world as a verified ZIP. The local catalog does not remove copies automatically.
 
-Convites usam AES-256-GCM e PBKDF2-HMAC-SHA256 com parâmetros versionados. O payload inclui conexão e credenciais, mas exclui jogador, caminhos e identidade local.
+Invitations use AES-256-GCM and PBKDF2-HMAC-SHA256 with versioned parameters. The payload includes connection and credentials, but excludes player, paths, and local identity.
 
-O grupo compartilha credenciais de escrita. Qualquer integrante pode publicar ou reinicializar seguindo o protocolo. Um papel exclusivo de proprietário exigiria um coordenador externo.
+The group shares write credentials. Any member can publish or reset following the protocol. An exclusive owner role would require an external coordinator.

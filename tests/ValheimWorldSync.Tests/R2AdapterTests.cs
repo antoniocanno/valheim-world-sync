@@ -1,9 +1,9 @@
-using Amazon.Runtime;
-using Amazon.S3;
-using Amazon.S3.Model;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using Amazon.Runtime;
+using Amazon.S3;
+using Amazon.S3.Model;
 using ValheimWorldSync.Core.Models;
 using ValheimWorldSync.Infrastructure.Storage;
 using Xunit;
